@@ -1,0 +1,98 @@
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Planilla mensual</h1>
+
+<div class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap items-end gap-3">
+  <label class="text-sm text-gray-700">
+    Periodo
+    <input type="month" [ngModel]="periodo()" (ngModelChange)="cambiarPeriodo($event)"
+           class="mt-1 block border rounded px-3 py-2 text-sm" />
+  </label>
+  <button type="button" (click)="procesar()" [disabled]="procesando()"
+          class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+    {{ procesando() ? 'Procesando…' : 'Procesar planilla' }}
+  </button>
+  <button type="button" (click)="descargarPlame()"
+          class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+    Descargar PLAME (.rem)
+  </button>
+</div>
+
+@for (nota of notasDelPeriodo(); track nota) {
+  <div class="mb-3 rounded bg-blue-50 px-4 py-2 text-sm text-blue-800">{{ nota }}</div>
+}
+@if (mensaje()) {
+  <div class="mb-4 rounded bg-green-50 px-4 py-2 text-sm text-green-700">{{ mensaje() }}</div>
+}
+@if (error()) {
+  <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+<div class="bg-white rounded-lg shadow overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50 text-left text-gray-600">
+      <tr>
+        <th class="px-4 py-3">Empleado</th>
+        <th class="px-4 py-3">Régimen</th>
+        <th class="px-4 py-3 text-right">Días</th>
+        <th class="px-4 py-3 text-right">Ingresos</th>
+        <th class="px-4 py-3 text-right">Descuentos</th>
+        <th class="px-4 py-3 text-right">Renta 5ta</th>
+        <th class="px-4 py-3 text-right">Neto a pagar</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (b of boletas(); track b.idBoleta) {
+        <tr class="border-t">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ b.nombresEmpleado }}<div class="text-xs font-normal text-gray-500">{{ b.tipoDocumento }} {{ b.dni }}</div></td>
+          <td class="px-4 py-3">{{ b.regimen }}</td>
+          <td class="px-4 py-3 text-right">{{ b.diasTrabajados ?? '—' }}</td>
+          <td class="px-4 py-3 text-right">S/ {{ b.totalIngresos | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">S/ {{ b.totalDescuentos | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">S/ {{ (b.renta5taRetenida ?? 0) | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right font-semibold">S/ {{ b.totalNeto | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">
+            <button type="button" (click)="alternarDetalle(b.idBoleta)" class="text-xs text-blue-600 hover:underline">
+              {{ expandida() === b.idBoleta ? 'Ocultar' : 'Ver detalle' }}
+            </button>
+          </td>
+        </tr>
+        @if (expandida() === b.idBoleta) {
+          <tr class="bg-gray-50">
+            <td colspan="8" class="px-6 py-4">
+              <table class="w-full max-w-2xl text-sm">
+                <tbody>
+                  @for (l of b.detalle; track $index) {
+                    <tr [class.text-gray-500]="l.tipo === 'INFORMATIVO'">
+                      <td class="py-1 pr-3 font-mono text-xs text-gray-400">{{ l.codigo ?? '' }}</td>
+                      <td class="py-1 pr-3">{{ l.descripcion }}</td>
+                      <td class="py-1 text-right" [class.text-red-700]="l.tipo === 'DESCUENTO'">
+                        {{ l.tipo === 'DESCUENTO' ? '−' : '' }} S/ {{ l.monto | number: '1.2-2' }}
+                      </td>
+                      <td class="py-1 pl-3 text-xs text-gray-400">{{ l.tipo === 'INFORMATIVO' ? 'no se descuenta' : '' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td class="py-1 text-gray-500">Esta boleta se generó antes del detalle: vuelve a procesar la planilla.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        }
+      } @empty {
+        <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No hay boletas en este periodo. Pulsa «Procesar planilla».</td></tr>
+      }
+    </tbody>
+    @if (boletas().length > 0) {
+      <tfoot class="bg-gray-50 font-semibold text-gray-800">
+        <tr class="border-t">
+          <td class="px-4 py-3" colspan="3">Totales</td>
+          <td class="px-4 py-3 text-right">S/ {{ totalIngresos() | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">S/ {{ totalDescuentos() | number: '1.2-2' }}</td>
+          <td class="px-4 py-3"></td>
+          <td class="px-4 py-3 text-right">S/ {{ totalNeto() | number: '1.2-2' }}</td>
+          <td class="px-4 py-3"></td>
+        </tr>
+      </tfoot>
+    }
+  </table>
+</div>

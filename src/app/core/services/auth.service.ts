@@ -1,32 +1,43 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { API_URL } from '../config/api.config';
+
+export interface LoginResponse {
+  token: string;
+  rol: string;
+}
+
+// localStorage no existe cuando Angular corre en el servidor (SSR): todo acceso va protegido.
+const storage = (): Storage | null => (typeof localStorage !== 'undefined' ? localStorage : null);
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8080/api/auth';
+  private http = inject(HttpClient);
+  private apiUrl = `${API_URL}/auth`;
 
-  constructor(private http: HttpClient) {}
-
-  login(credentials: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, credentials).pipe(
-      tap((response: any) => {
-        // Al recibir respuesta exitosa, guardamos el token y rol
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('rol', response.rol);
+  login(credentials: { username: string; password: string }): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, credentials).pipe(
+      tap((response) => {
+        storage()?.setItem('token', response.token);
+        storage()?.setItem('rol', response.rol);
       })
     );
   }
 
   getToken(): string | null {
-    return localStorage.getItem('token');
+    return storage()?.getItem('token') ?? null;
+  }
+
+  getRol(): string | null {
+    return storage()?.getItem('rol') ?? null;
   }
 
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('rol');
+    storage()?.removeItem('token');
+    storage()?.removeItem('rol');
   }
 
   isAuthenticated(): boolean {

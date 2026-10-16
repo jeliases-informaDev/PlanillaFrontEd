@@ -1,0 +1,55 @@
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Conceptos remunerativos</h1>
+
+<form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
+  <input name="codigo" [(ngModel)]="form.codigo" required maxlength="10" placeholder="Código SUNAT (Ej: 0301)" class="border rounded px-3 py-2 text-sm" />
+  <input name="descripcion" [(ngModel)]="form.descripcion" required placeholder="Descripción" class="border rounded px-3 py-2 text-sm md:col-span-2" />
+  <select name="tipo" [(ngModel)]="form.tipo" required class="border rounded px-3 py-2 text-sm">
+    <option value="INGRESO">INGRESO (suma al bruto)</option>
+    <option value="DESCUENTO">DESCUENTO (resta del neto)</option>
+  </select>
+  <label class="flex items-center gap-2 text-sm text-gray-700">
+    <input name="r5" type="checkbox" [(ngModel)]="form.afectaRenta5ta" /> Afecta Renta 5ta
+  </label>
+  <label class="flex items-center gap-2 text-sm text-gray-700">
+    <input name="es" type="checkbox" [(ngModel)]="form.afectaEssalud" /> Afecta EsSalud
+  </label>
+  <button type="submit" [disabled]="f.invalid || guardando()"
+          class="md:col-start-4 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+    {{ guardando() ? 'Guardando…' : 'Agregar concepto' }}
+  </button>
+</form>
+
+@if (error()) {
+  <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+<div class="bg-white rounded-lg shadow overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50 text-left text-gray-600">
+      <tr>
+        <th class="px-4 py-3">Código</th>
+        <th class="px-4 py-3">Descripción</th>
+        <th class="px-4 py-3">Tipo</th>
+        <th class="px-4 py-3">Renta 5ta</th>
+        <th class="px-4 py-3">EsSalud</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (c of store.conceptos(); track c.idConcepto) {
+        <tr class="border-t">
+          <td class="px-4 py-3 font-mono">{{ c.codigo }}</td>
+          <td class="px-4 py-3 font-medium text-gray-800">{{ c.descripcion }}</td>
+          <td class="px-4 py-3">
+            <span class="rounded-full px-2 py-0.5 text-xs"
+                  [class.bg-green-100]="c.tipo === 'INGRESO'" [class.text-green-800]="c.tipo === 'INGRESO'"
+                  [class.bg-red-100]="c.tipo === 'DESCUENTO'" [class.text-red-800]="c.tipo === 'DESCUENTO'">{{ c.tipo }}</span>
+          </td>
+          <td class="px-4 py-3">{{ c.afectaRenta5ta ? 'Sí' : 'No' }}</td>
+          <td class="px-4 py-3">{{ c.afectaEssalud ? 'Sí' : 'No' }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No hay conceptos registrados.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>

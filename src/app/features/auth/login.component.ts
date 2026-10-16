@@ -21,7 +21,7 @@ export class LoginComponent {
     this.authService.login(this.credentials).subscribe({
       next: () => {
         // Redirigimos al panel principal si entra
-        this.router.navigate(['/empleados']);
+        this.router.navigate(['/panel']);
       },
       error: (err: any) => { // <-- Tipado estricto solucionado
         this.errorMessage = 'Credenciales incorrectas o error de servidor.';

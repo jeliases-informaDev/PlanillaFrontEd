@@ -1,0 +1,115 @@
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <h1 class="text-2xl font-bold text-gray-800">Movimientos del mes</h1>
+  <label class="text-sm text-gray-700">
+    Periodo
+    <input type="month" [ngModel]="periodo()" (ngModelChange)="cambiarPeriodo($event)"
+           class="ml-2 border rounded px-3 py-2 text-sm" />
+  </label>
+</div>
+
+<div class="mb-3 inline-flex rounded-lg bg-gray-200 p-1 text-sm">
+  <button type="button" (click)="cambiarModo('fijo')"
+          class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'fijo'" [class.shadow]="modo() === 'fijo'">Bono / Descuento</button>
+  <button type="button" (click)="cambiarModo('horas')"
+          class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'horas'" [class.shadow]="modo() === 'horas'">Horas extras</button>
+  <button type="button" (click)="cambiarModo('vacaciones')"
+          class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'vacaciones'" [class.shadow]="modo() === 'vacaciones'">Vacaciones</button>
+</div>
+
+<form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+  @switch (modo()) {
+    @case ('fijo') {
+      <select name="fEmp" [(ngModel)]="fijo.idEmpleado" required class="border rounded px-3 py-2 text-sm md:col-span-2">
+        <option [ngValue]="null" disabled>Empleado…</option>
+        @for (e of empleadosActivos(); track e.idEmpleado) {
+          <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }}</option>
+        }
+      </select>
+      <select name="fCon" [(ngModel)]="fijo.codigoConcepto" required class="border rounded px-3 py-2 text-sm">
+        <option [ngValue]="null" disabled>Concepto…</option>
+        @for (c of conceptosMonto(); track c.idConcepto) {
+          <option [ngValue]="c.codigo">{{ c.codigo }} · {{ c.descripcion }} ({{ c.tipo === 'DESCUENTO' ? '−' : '+' }})</option>
+        }
+      </select>
+      <input name="fMonto" type="number" min="0.01" step="0.01" [(ngModel)]="fijo.monto" required placeholder="Monto (S/)" class="border rounded px-3 py-2 text-sm" />
+    }
+    @case ('horas') {
+      <select name="hEmp" [(ngModel)]="horas.idEmpleado" required class="border rounded px-3 py-2 text-sm md:col-span-2">
+        <option [ngValue]="null" disabled>Empleado…</option>
+        @for (e of empleadosActivos(); track e.idEmpleado) {
+          <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }}</option>
+        }
+      </select>
+      <label class="text-xs text-gray-500">Horas al 25 %
+        <input name="h25" type="number" min="0" [(ngModel)]="horas.horasAl25" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+      </label>
+      <label class="text-xs text-gray-500">Horas al 35 %
+        <input name="h35" type="number" min="0" [(ngModel)]="horas.horasAl35" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+      </label>
+    }
+    @case ('vacaciones') {
+      <select name="vEmp" [(ngModel)]="vacaciones.idEmpleado" required class="border rounded px-3 py-2 text-sm md:col-span-2">
+        <option [ngValue]="null" disabled>Empleado…</option>
+        @for (e of empleadosActivos(); track e.idEmpleado) {
+          <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }} · {{ e.regimenLaboral }}</option>
+        }
+      </select>
+      <input name="vDias" type="number" min="1" [(ngModel)]="vacaciones.diasGozados" required placeholder="Días gozados" class="border rounded px-3 py-2 text-sm" />
+    }
+  }
+  <button type="submit" [disabled]="f.invalid || guardando()"
+          class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+    {{ guardando() ? 'Guardando…' : 'Registrar' }}
+  </button>
+</form>
+
+<p class="mb-3 text-xs text-gray-500">
+  El monto de horas extras y vacaciones lo calcula el sistema con el sueldo del empleado. Para que un movimiento entre a la boleta,
+  vuelve a procesar la planilla del periodo.
+</p>
+
+@if (error()) {
+  <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+<div class="bg-white rounded-lg shadow overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50 text-left text-gray-600">
+      <tr>
+        <th class="px-4 py-3">Empleado</th>
+        <th class="px-4 py-3">Concepto</th>
+        <th class="px-4 py-3 text-right">Monto</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (m of movimientos(); track m.idMovimiento) {
+        <tr class="border-t transition-colors duration-1000" [class.bg-green-100]="recienLlegados().has(m.idMovimiento)">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ m.empleado }}</td>
+          <td class="px-4 py-3">{{ m.codigoConcepto }} · {{ m.concepto }}</td>
+          <td class="px-4 py-3 text-right font-medium" [class.text-green-700]="m.tipo === 'INGRESO'" [class.text-red-700]="m.tipo === 'DESCUENTO'">
+            {{ m.tipo === 'DESCUENTO' ? '−' : '+' }} S/ {{ m.monto | number: '1.2-2' }}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <button type="button" (click)="eliminar(m)" class="text-xs text-red-600 hover:underline">Anular</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay movimientos en este periodo.</td></tr>
+      }
+    </tbody>
+    @if (movimientos().length > 0) {
+      <tfoot class="bg-gray-50 font-semibold text-gray-800">
+        <tr class="border-t">
+          <td class="px-4 py-3" colspan="2">Totales del periodo</td>
+          <td class="px-4 py-3 text-right">
+            <span class="text-green-700">+ S/ {{ totalIngresos() | number: '1.2-2' }}</span>
+            <span class="mx-2 text-gray-300">|</span>
+            <span class="text-red-700">− S/ {{ totalDescuentos() | number: '1.2-2' }}</span>
+          </td>
+          <td></td>
+        </tr>
+      </tfoot>
+    }
+  </table>
+</div>

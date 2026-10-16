@@ -1,1 +1,111 @@
-<p>empleados works!</p>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <h1 class="text-2xl font-bold text-gray-800">Empleados</h1>
+  <a routerLink="/empleados/importar"
+     class="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+    Carga masiva (Excel)
+  </a>
+</div>
+
+<form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+  <select name="tipoDocumento" [(ngModel)]="form.tipoDocumento" required class="border rounded px-3 py-2 text-sm">
+    @for (t of tiposDocumento(); track t.codigo) {
+      <option [value]="t.codigo">{{ t.etiqueta }}</option>
+    }
+  </select>
+  <input name="dni" [(ngModel)]="form.dni" required [pattern]="patronDocumento()" [maxlength]="largoDocumento()"
+         [placeholder]="form.tipoDocumento === 'DNI' ? 'DNI (8 dígitos)' : 'N° de documento'" class="border rounded px-3 py-2 text-sm" />
+  <input name="nombres" [(ngModel)]="form.nombres" required placeholder="Nombres" class="border rounded px-3 py-2 text-sm" />
+  <input name="apellidos" [(ngModel)]="form.apellidos" required placeholder="Apellidos" class="border rounded px-3 py-2 text-sm" />
+  <label class="text-xs text-gray-500">Fecha de ingreso
+    <input name="fechaIngreso" type="date" [(ngModel)]="form.fechaIngreso" required class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+  </label>
+  <input name="sueldoBase" type="number" min="0.01" step="0.01" [(ngModel)]="form.sueldoBase" required placeholder="Sueldo base (S/)" class="self-end border rounded px-3 py-2 text-sm" />
+  <select name="idRegimen" [(ngModel)]="form.idRegimen" required class="self-end border rounded px-3 py-2 text-sm">
+    <option [ngValue]="null" disabled>Régimen laboral…</option>
+    @for (r of regimenes(); track r.idRegimen) {
+      <option [ngValue]="r.idRegimen">{{ r.nombre }}</option>
+    }
+  </select>
+  <input name="cargo" [(ngModel)]="form.cargo" placeholder="Cargo (Ej: Asesor)" class="self-end border rounded px-3 py-2 text-sm" />
+
+  <select name="sistemaPensionario" [(ngModel)]="form.sistemaPensionario" required class="border rounded px-3 py-2 text-sm">
+    <option value="ONP">Pensión: ONP (13%)</option>
+    <option value="AFP">Pensión: AFP</option>
+  </select>
+  @if (form.sistemaPensionario === 'AFP') {
+    <select name="idAfp" [(ngModel)]="form.idAfp" required class="border rounded px-3 py-2 text-sm">
+      <option [ngValue]="null" disabled>AFP…</option>
+      @for (a of afps(); track a.idAfp) {
+        <option [ngValue]="a.idAfp">{{ a.nombre }}</option>
+      }
+    </select>
+    <input name="cuspp" [(ngModel)]="form.cuspp" maxlength="12" placeholder="CUSPP (opcional)" class="border rounded px-3 py-2 text-sm" />
+  }
+  <label class="flex items-center gap-2 text-sm text-gray-700">
+    <input name="asignacionFamiliar" type="checkbox" [(ngModel)]="form.asignacionFamiliar" /> Asignación familiar
+  </label>
+
+  <div class="md:col-span-4">
+    <button type="button" (click)="mostrarExtras.set(!mostrarExtras())" class="text-sm text-blue-700 hover:underline">
+      {{ mostrarExtras() ? 'Ocultar datos adicionales' : 'Datos adicionales (área, contacto, bancos, CTS)' }}
+    </button>
+  </div>
+  @if (mostrarExtras()) {
+    <input name="area" [(ngModel)]="form.area" placeholder="Área / sede / campaña" class="border rounded px-3 py-2 text-sm" />
+    <input name="correo" type="email" [(ngModel)]="form.correo" placeholder="Correo" class="border rounded px-3 py-2 text-sm" />
+    <input name="telefono" [(ngModel)]="form.telefono" placeholder="Teléfono" class="border rounded px-3 py-2 text-sm" />
+    <label class="text-xs text-gray-500">Fecha de nacimiento
+      <input name="fechaNacimiento" type="date" [(ngModel)]="form.fechaNacimiento" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+    </label>
+    <input name="banco" [(ngModel)]="form.banco" placeholder="Banco del sueldo" class="border rounded px-3 py-2 text-sm" />
+    <input name="cuentaBancaria" [(ngModel)]="form.cuentaBancaria" placeholder="Cuenta / CCI del sueldo" class="border rounded px-3 py-2 text-sm" />
+    <input name="bancoCts" [(ngModel)]="form.bancoCts" placeholder="Banco de la CTS" class="border rounded px-3 py-2 text-sm" />
+    <input name="cuentaCts" [(ngModel)]="form.cuentaCts" placeholder="Cuenta de la CTS" class="border rounded px-3 py-2 text-sm" />
+  }
+
+  <button type="submit" [disabled]="f.invalid || guardando()"
+          class="md:col-start-4 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+    {{ guardando() ? 'Guardando…' : 'Registrar empleado' }}
+  </button>
+</form>
+
+@if (error()) {
+  <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+<div class="bg-white rounded-lg shadow overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50 text-left text-gray-600">
+      <tr>
+        <th class="px-4 py-3">Empleado</th>
+        <th class="px-4 py-3">Documento</th>
+        <th class="px-4 py-3">Cargo</th>
+        <th class="px-4 py-3">Ingreso</th>
+        <th class="px-4 py-3">Régimen</th>
+        <th class="px-4 py-3 text-right">Sueldo base</th>
+        <th class="px-4 py-3">Pensión</th>
+        <th class="px-4 py-3">Asig. fam.</th>
+        <th class="px-4 py-3">Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (e of empleados(); track e.idEmpleado) {
+        <tr class="border-t transition-colors duration-1000" [class.bg-green-100]="recienLlegados().has(e.idEmpleado)">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ e.nombresCompletos }}</td>
+          <td class="px-4 py-3">{{ e.tipoDocumento }} {{ e.dni }}</td>
+          <td class="px-4 py-3">{{ e.cargo ?? '—' }}</td>
+          <td class="px-4 py-3">{{ e.fechaIngreso | date: 'dd/MM/yyyy' }}</td>
+          <td class="px-4 py-3">{{ e.regimenLaboral }}</td>
+          <td class="px-4 py-3 text-right">S/ {{ e.sueldoBase | number: '1.2-2' }}</td>
+          <td class="px-4 py-3">{{ e.sistemaPensionario === 'AFP' ? 'AFP ' + e.afp : 'ONP' }}</td>
+          <td class="px-4 py-3">{{ e.asignacionFamiliar ? 'Sí' : 'No' }}</td>
+          <td class="px-4 py-3">
+            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">{{ e.estado }}</span>
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">Aún no hay empleados registrados.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>

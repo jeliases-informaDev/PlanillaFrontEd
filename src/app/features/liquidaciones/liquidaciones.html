@@ -1,0 +1,44 @@
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Liquidación de beneficios sociales</h1>
+
+<div class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+  <select [ngModel]="idEmpleado()" (ngModelChange)="cambiarEmpleado($event)" class="border rounded px-3 py-2 text-sm md:col-span-2">
+    <option [ngValue]="null">Selecciona un empleado…</option>
+    @for (e of empleados(); track e.idEmpleado) {
+      <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }} · {{ e.dni }} ({{ e.estado }})</option>
+    }
+  </select>
+  <label class="text-xs text-gray-500">Fecha de cese
+    <input type="date" [ngModel]="fechaCese()" (ngModelChange)="cambiarFecha($event)"
+           class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+  </label>
+</div>
+
+@if (seleccionado(); as s) {
+  <p class="mb-4 text-sm text-gray-600">
+    Ingreso: {{ s.fechaIngreso }} · Sueldo base: S/ {{ s.sueldoBase | number: '1.2-2' }} · {{ s.regimenLaboral }}
+  </p>
+}
+
+@if (error()) {
+  <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+@if (resultado(); as r) {
+  <div class="bg-white rounded-lg shadow p-6 max-w-xl" [class.opacity-60]="calculando()">
+    <div class="text-sm text-gray-500">{{ r.nombresEmpleado }} · {{ r.regimen }}</div>
+    <div class="mb-4 text-sm text-gray-500">Tiempo de servicio: <span class="font-medium text-gray-800">{{ r.tiempoServicio }}</span></div>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between"><dt>Vacaciones truncas</dt><dd>S/ {{ r.montoVacacionesTruncas | number: '1.2-2' }}</dd></div>
+      <div class="flex justify-between"><dt>Gratificación trunca</dt><dd>S/ {{ r.montoGratificacionTrunca | number: '1.2-2' }}</dd></div>
+      <div class="flex justify-between"><dt>CTS trunca</dt><dd>S/ {{ r.montoCtsTrunca | number: '1.2-2' }}</dd></div>
+      <div class="flex justify-between border-t pt-3 text-base font-semibold text-gray-900">
+        <dt>Total a liquidar</dt><dd>S/ {{ r.totalLiquidacion | number: '1.2-2' }}</dd>
+      </div>
+    </dl>
+    <p class="mt-4 text-xs text-gray-400">Cálculo referencial: se recalcula al cambiar empleado o fecha de cese y no se guarda.</p>
+  </div>
+} @else if (!error()) {
+  <div class="rounded-lg border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500">
+    Elige un empleado y la fecha de cese para ver el cálculo al instante.
+  </div>
+}

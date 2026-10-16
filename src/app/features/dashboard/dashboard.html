@@ -1,0 +1,32 @@
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Panel en vivo</h1>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow p-4">
+    <div class="text-sm text-gray-500">Empleados registrados</div>
+    <div class="text-3xl font-bold text-gray-800">{{ totalEmpleados() | number }}</div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <div class="text-sm text-gray-500">Cambios recibidos en esta sesión</div>
+    <div class="text-3xl font-bold text-gray-800">{{ eventosSesion() }}</div>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow">
+  <div class="border-b px-4 py-3 font-medium text-gray-700">Actividad en tiempo real</div>
+  <ul>
+    @for (a of actividad(); track a.clave) {
+      <li class="flex items-start gap-3 border-b px-4 py-3 last:border-b-0">
+        <span class="mt-0.5 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{{ a.etiqueta }}</span>
+        <div class="flex-1 text-sm text-gray-800">
+          <span class="font-medium">{{ a.accion }}</span> — {{ a.texto }}
+        </div>
+        <span class="text-xs text-gray-400">{{ a.momento | date: 'HH:mm:ss' }}</span>
+      </li>
+    } @empty {
+      <li class="px-4 py-8 text-center text-sm text-gray-500">
+        Esperando cambios… registra un empleado, una asistencia o procesa una planilla y aparecerá aquí al instante,
+        también si lo hace otro usuario desde otra computadora.
+      </li>
+    }
+  </ul>
+</div>
