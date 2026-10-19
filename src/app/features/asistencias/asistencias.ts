@@ -2,6 +2,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { DatePipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { API_URL } from '../../core/config/api.config';
 import { EmpleadosStore } from '../../core/services/empleados.store';
@@ -13,10 +14,19 @@ interface Asistencia {
   idEmpleado: number;
   nombreEmpleado: string;
   fecha: string;
-  horaIngreso: string | null;
-  horaSalida: string | null;
   estado: string;
   minutosTardanza: number;
+  marcaIngreso: string | null;
+  marcaAlmuerzoInicio: string | null;
+  marcaAlmuerzoFin: string | null;
+  marcaSalida: string | null;
+  horaProgramadaEntrada: string | null;
+  horaProgramadaSalida: string | null;
+  minutosExtra: number | null;
+  justificada: boolean;
+  motivoJustificacion: string | null;
+  origen: string | null;
+  observacion: string | null;
 }
 
 export const ESTADOS_ASISTENCIA = ['ASISTIO', 'TARDANZA', 'FALTA', 'PERMISO', 'DESCANSO_MEDICO'] as const;
@@ -31,7 +41,7 @@ const COLORES: Record<string, string> = {
 
 @Component({
   selector: 'app-asistencias',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, RouterLink],
   templateUrl: './asistencias.html'
 })
 export class Asistencias implements OnInit {
@@ -46,8 +56,24 @@ export class Asistencias implements OnInit {
   protected recienLlegadas = signal<ReadonlySet<number>>(new Set());
   protected error = signal('');
   protected guardando = signal(false);
+  protected mostrarManual = signal(false);
+  protected soloProblemas = signal(false);
 
   protected empleadosActivos = computed(() => this.store.empleados().filter((e) => e.estado === 'ACTIVO'));
+
+  /** Lista que se muestra: todo, o solo tardanzas y faltas para revisar rápido. */
+  protected visibles = computed(() =>
+    this.soloProblemas() ? this.asistencias().filter((a) => a.estado === 'TARDANZA' || a.estado === 'FALTA') : this.asistencias()
+  );
+
+  protected resumen = computed(() => {
+    const l = this.asistencias();
+    return {
+      tardanzas: l.filter((a) => a.estado === 'TARDANZA' && !a.justificada).length,
+      faltas: l.filter((a) => a.estado === 'FALTA' && !a.justificada).length,
+      justificadas: l.filter((a) => a.justificada).length
+    };
+  });
 
   protected form = this.formularioNuevo();
 
@@ -66,12 +92,21 @@ export class Asistencias implements OnInit {
     return COLORES[estado] ?? 'bg-gray-100 text-gray-800';
   }
 
+  /** "08:41:00" -> "08:41" */
+  protected hm(hora: string | null): string {
+    return hora ? hora.slice(0, 5) : '—';
+  }
+
   ngOnInit(): void {
     this.store.iniciar();
     this.realtime.alConectar$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.cargar());
     this.cargar();
 
     this.realtime.watch<Asistencia>('asistencias').pipe(takeUntilDestroyed(this.destroyRef)).subscribe((evento) => {
+      if (evento.accion === 'IMPORTADO') {
+        this.cargar(); // llegó una importación completa del marcador
+        return;
+      }
       if (!evento.data.fecha.startsWith(this.periodo())) return; // otro mes: no es el que estoy viendo
       this.asistencias.update((lista) =>
         upsert(lista, evento.data, (a) => a.idAsistencia).sort((a, b) => b.fecha.localeCompare(a.fecha) || b.idAsistencia - a.idAsistencia)
@@ -124,6 +159,28 @@ export class Asistencias implements OnInit {
         this.error.set(e.error?.mensaje ?? 'No se pudo registrar la asistencia.');
         this.guardando.set(false);
       }
+    });
+  }
+
+  /** Justifica una tardanza o falta (pide el motivo/documento) o quita la justificación. */
+  protected justificar(a: Asistencia): void {
+    this.error.set('');
+    if (a.justificada) {
+      this.enviarJustificacion(a, false, '');
+      return;
+    }
+    const motivo = window.prompt(`Motivo y documento que respalda (${a.nombreEmpleado}, ${a.fecha}):`, '');
+    if (motivo === null) return;
+    if (!motivo.trim()) {
+      this.error.set('Para justificar hay que indicar el motivo y el documento que lo respalda.');
+      return;
+    }
+    this.enviarJustificacion(a, true, motivo.trim());
+  }
+
+  private enviarJustificacion(a: Asistencia, justificada: boolean, motivo: string): void {
+    this.http.put<Asistencia>(`${API_URL}/asistencias/${a.idAsistencia}/justificar`, { justificada, motivo }).subscribe({
+      error: (e: HttpErrorResponse) => this.error.set(e.error?.mensaje ?? 'No se pudo guardar la justificación.')
     });
   }
 }

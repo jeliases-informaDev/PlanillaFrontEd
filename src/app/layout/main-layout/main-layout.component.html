@@ -6,9 +6,18 @@
         <a [routerLink]="e.ruta" routerLinkActive="bg-slate-700 text-white"
            class="block rounded px-3 py-2 text-sm hover:bg-slate-800">{{ e.texto }}</a>
       }
+      @if (esAdmin) {
+        <div class="px-3 pt-4 pb-1 text-xs uppercase tracking-wide text-slate-500">Administración</div>
+        @for (e of enlacesAdmin; track e.ruta) {
+          <a [routerLink]="e.ruta" routerLinkActive="bg-slate-700 text-white"
+             class="block rounded px-3 py-2 text-sm hover:bg-slate-800">{{ e.texto }}</a>
+        }
+      }
     </nav>
     <div class="px-4 py-4 text-xs text-slate-400 border-t border-slate-800">
-      Rol: {{ rol }}
+      <div class="text-slate-200">{{ nombre }}</div>
+      <div>{{ rol }}</div>
+      <a routerLink="/cambiar-password" class="mt-2 block text-slate-400 hover:text-white hover:underline">Cambiar contraseña</a>
       <button type="button" (click)="salir()"
               class="mt-2 block w-full rounded bg-slate-800 px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700">
         Cerrar sesión
@@ -18,6 +27,9 @@
 
   <div class="flex-1 flex flex-col min-w-0">
     <header class="flex items-center justify-end gap-3 bg-white px-6 py-3 shadow-sm">
+      @if (!esAdmin) {
+        <span class="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">Modo solo lectura</span>
+      }
       <span class="inline-flex items-center gap-2 text-sm"
             [class.text-green-700]="realtime.conectado()" [class.text-amber-600]="!realtime.conectado()">
         <span class="h-2.5 w-2.5 rounded-full"

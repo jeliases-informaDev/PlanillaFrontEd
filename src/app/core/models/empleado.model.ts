@@ -3,6 +3,7 @@ export interface Empleado {
   tipoDocumento: string;
   nombresCompletos: string;
   dni: string; // número del documento de identidad
+  idMarcador: string | null; // ID en el reloj biométrico (null = el documento)
   fechaNacimiento: string | null;
   fechaIngreso: string;
   cargo: string | null;
@@ -19,7 +20,10 @@ export interface Empleado {
   sistemaPensionario: 'ONP' | 'AFP' | string;
   afp: string | null;
   cuspp: string | null;
+  tipoComisionAfp: 'FLUJO' | 'MIXTA' | string | null;
   asignacionFamiliar: boolean;
+  fechaCese: string | null;
+  motivoCese: string | null;
 }
 
 export interface TipoDocumento {

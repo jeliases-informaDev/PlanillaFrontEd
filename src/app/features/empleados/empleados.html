@@ -1,11 +1,19 @@
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
   <h1 class="text-2xl font-bold text-gray-800">Empleados</h1>
-  <a routerLink="/empleados/importar"
-     class="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
-    Carga masiva (Excel)
-  </a>
+  <div class="flex flex-wrap items-center gap-3">
+    <label class="text-sm text-gray-700"><input type="checkbox" [checked]="mostrarCesados()" (change)="mostrarCesados.set(!mostrarCesados())" /> Ver cesados</label>
+    @if (auth.esAdmin()) {
+      <a routerLink="/empleados/actualizar" class="rounded border border-gray-400 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Actualizar en masa (Excel)</a>
+      <a routerLink="/empleados/importar" class="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">Carga masiva (Excel)</a>
+    }
+  </div>
 </div>
 
+@if (!auth.esAdmin()) {
+  <p class="mb-4 text-sm text-gray-500">Modo solo lectura.</p>
+}
+
+@if (auth.esAdmin()) {
 <form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
   <select name="tipoDocumento" [(ngModel)]="form.tipoDocumento" required class="border rounded px-3 py-2 text-sm">
     @for (t of tiposDocumento(); track t.codigo) {
@@ -39,6 +47,10 @@
         <option [ngValue]="a.idAfp">{{ a.nombre }}</option>
       }
     </select>
+    <select name="tipoComisionAfp" [(ngModel)]="form.tipoComisionAfp" required class="border rounded px-3 py-2 text-sm">
+      <option value="FLUJO">Comisión: por flujo</option>
+      <option value="MIXTA">Comisión: mixta (sin flujo)</option>
+    </select>
     <input name="cuspp" [(ngModel)]="form.cuspp" maxlength="12" placeholder="CUSPP (opcional)" class="border rounded px-3 py-2 text-sm" />
   }
   <label class="flex items-center gap-2 text-sm text-gray-700">
@@ -51,6 +63,7 @@
     </button>
   </div>
   @if (mostrarExtras()) {
+    <input name="idMarcador" [(ngModel)]="form.idMarcador" placeholder="ID en el reloj (si no es su DNI)" class="border rounded px-3 py-2 text-sm" />
     <input name="area" [(ngModel)]="form.area" placeholder="Área / sede / campaña" class="border rounded px-3 py-2 text-sm" />
     <input name="correo" type="email" [(ngModel)]="form.correo" placeholder="Correo" class="border rounded px-3 py-2 text-sm" />
     <input name="telefono" [(ngModel)]="form.telefono" placeholder="Teléfono" class="border rounded px-3 py-2 text-sm" />
@@ -68,6 +81,7 @@
     {{ guardando() ? 'Guardando…' : 'Registrar empleado' }}
   </button>
 </form>
+}
 
 @if (error()) {
   <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
@@ -86,10 +100,11 @@
         <th class="px-4 py-3">Pensión</th>
         <th class="px-4 py-3">Asig. fam.</th>
         <th class="px-4 py-3">Estado</th>
+        <th class="px-4 py-3"></th>
       </tr>
     </thead>
     <tbody>
-      @for (e of empleados(); track e.idEmpleado) {
+      @for (e of visibles(); track e.idEmpleado) {
         <tr class="border-t transition-colors duration-1000" [class.bg-green-100]="recienLlegados().has(e.idEmpleado)">
           <td class="px-4 py-3 font-medium text-gray-800">{{ e.nombresCompletos }}</td>
           <td class="px-4 py-3">{{ e.tipoDocumento }} {{ e.dni }}</td>
@@ -97,14 +112,26 @@
           <td class="px-4 py-3">{{ e.fechaIngreso | date: 'dd/MM/yyyy' }}</td>
           <td class="px-4 py-3">{{ e.regimenLaboral }}</td>
           <td class="px-4 py-3 text-right">S/ {{ e.sueldoBase | number: '1.2-2' }}</td>
-          <td class="px-4 py-3">{{ e.sistemaPensionario === 'AFP' ? 'AFP ' + e.afp : 'ONP' }}</td>
+          <td class="px-4 py-3">{{ e.sistemaPensionario === 'AFP' ? 'AFP ' + e.afp + (e.tipoComisionAfp === 'MIXTA' ? ' (mixta)' : '') : 'ONP' }}</td>
           <td class="px-4 py-3">{{ e.asignacionFamiliar ? 'Sí' : 'No' }}</td>
           <td class="px-4 py-3">
-            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">{{ e.estado }}</span>
+            <span class="rounded-full px-2 py-0.5 text-xs" [class.bg-green-100]="e.estado === 'ACTIVO'" [class.text-green-800]="e.estado === 'ACTIVO'"
+                  [class.bg-red-100]="e.estado === 'CESADO'" [class.text-red-800]="e.estado === 'CESADO'">{{ e.estado }}</span>
+            @if (e.fechaCese) { <div class="text-xs text-gray-500">{{ e.fechaCese | date: 'dd/MM/yyyy' }} · {{ e.motivoCese ?? '' }}</div> }
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            @if (auth.esAdmin()) {
+              <button type="button" (click)="editarSueldo(e)" class="text-xs text-blue-600 hover:underline">Sueldo</button>
+              @if (e.estado === 'ACTIVO') {
+                <button type="button" (click)="cesar(e)" class="ml-3 text-xs text-red-600 hover:underline">Cesar</button>
+              } @else {
+                <button type="button" (click)="reactivar(e)" class="ml-3 text-xs text-green-700 hover:underline">Reactivar</button>
+              }
+            }
           </td>
         </tr>
       } @empty {
-        <tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">Aún no hay empleados registrados.</td></tr>
+        <tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">Aún no hay empleados registrados.</td></tr>
       }
     </tbody>
   </table>

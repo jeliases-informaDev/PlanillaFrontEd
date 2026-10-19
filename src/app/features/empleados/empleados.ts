@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -6,8 +6,9 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { API_URL } from '../../core/config/api.config';
 import { Empleado, TipoDocumento } from '../../core/models/empleado.model';
+import { AuthService } from '../../core/services/auth.service';
 import { RealtimeService } from '../../core/services/realtime.service';
-import { upsert } from '../../core/utils/lista';
+import { hoyISO, upsert } from '../../core/utils/lista';
 
 interface Regimen {
   idRegimen: number;
@@ -24,6 +25,7 @@ const FORMULARIO_VACIO = {
   nombres: '',
   apellidos: '',
   dni: '',
+  idMarcador: '',
   fechaNacimiento: '',
   fechaIngreso: '',
   cargo: '',
@@ -39,6 +41,7 @@ const FORMULARIO_VACIO = {
   sistemaPensionario: 'ONP' as string,
   idAfp: null as number | null,
   cuspp: '',
+  tipoComisionAfp: 'FLUJO' as string,
   asignacionFamiliar: false
 };
 
@@ -94,6 +97,42 @@ export class Empleados implements OnInit {
         return copia;
       });
     }, 4000);
+  }
+
+  protected auth = inject(AuthService);
+  protected mostrarCesados = signal(false);
+  protected visibles = computed(() => this.mostrarCesados() ? this.empleados() : this.empleados().filter((e) => e.estado !== 'CESADO'));
+
+  protected cesar(e: Empleado): void {
+    const fecha = window.prompt(`Último día trabajado de ${e.nombresCompletos} (aaaa-mm-dd):`, hoyISO());
+    if (fecha === null) return;
+    const motivo = window.prompt('Motivo del cese (renuncia, fin de contrato, despido…):', '') ?? '';
+    this.error.set('');
+    this.http.post<Empleado>(`${API_URL}/empleados/${e.idEmpleado}/cesar`, { fechaCese: fecha, motivo }).subscribe({
+      error: (err: HttpErrorResponse) => this.error.set(err.error?.mensaje ?? 'No se pudo registrar el cese.')
+    });
+  }
+
+  protected reactivar(e: Empleado): void {
+    if (!confirm(`¿Reactivar a ${e.nombresCompletos}?`)) return;
+    this.error.set('');
+    this.http.post<Empleado>(`${API_URL}/empleados/${e.idEmpleado}/reactivar`, {}).subscribe({
+      error: (err: HttpErrorResponse) => this.error.set(err.error?.mensaje ?? 'No se pudo reactivar.')
+    });
+  }
+
+  protected editarSueldo(e: Empleado): void {
+    const v = window.prompt(`Nuevo sueldo base de ${e.nombresCompletos} (actual S/ ${e.sueldoBase}):`, String(e.sueldoBase));
+    if (v === null) return;
+    const sueldo = Number(v.replace(',', '.'));
+    if (!(sueldo > 0)) {
+      this.error.set('El sueldo debe ser un número mayor a cero.');
+      return;
+    }
+    this.error.set('');
+    this.http.put<Empleado>(`${API_URL}/empleados/${e.idEmpleado}`, { sueldoBase: sueldo }).subscribe({
+      error: (err: HttpErrorResponse) => this.error.set(err.error?.mensaje ?? 'No se pudo cambiar el sueldo.')
+    });
   }
 
   protected patronDocumento(): string {

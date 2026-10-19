@@ -1,0 +1,71 @@
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Auditoría</h1>
+<p class="mb-4 text-sm text-gray-600">Todo cambio en sueldos, asistencias, movimientos, boletas, tasas y usuarios queda registrado con quién lo hizo y cuándo.</p>
+
+<div class="mb-4 flex flex-wrap items-end gap-3 text-sm">
+  <label class="text-gray-700">Ver solo
+    <select [ngModel]="filtroEntidad()" (ngModelChange)="filtroEntidad.set($event)" class="ml-2 border rounded px-2 py-1">
+      <option value="">Todo</option>
+      @for (e of entidades; track e) { <option [value]="e">{{ e }}</option> }
+    </select>
+  </label>
+  <form (ngSubmit)="buscar()" class="flex items-end gap-2">
+    <label class="text-gray-700">Historial de
+      <select name="ent" [(ngModel)]="buscarEntidad" class="ml-2 border rounded px-2 py-1">
+        @for (e of entidades; track e) { <option [value]="e">{{ e }}</option> }
+      </select>
+    </label>
+    <input name="id" type="number" [(ngModel)]="buscarId" placeholder="ID" class="w-24 border rounded px-2 py-1" />
+    <button type="submit" class="rounded bg-blue-600 px-3 py-1 text-white hover:bg-blue-700">Ver</button>
+  </form>
+  <button type="button" (click)="cargarRecientes()" class="text-blue-700 hover:underline">Actualizar</button>
+</div>
+
+@if (error()) { <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div> }
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+  <div class="bg-white rounded-lg shadow overflow-x-auto">
+    <div class="border-b px-4 py-3 font-medium text-gray-700">Cambios recientes</div>
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-gray-600">
+        <tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Usuario</th><th class="px-3 py-2">Qué</th><th class="px-3 py-2">Acción</th><th class="px-3 py-2">Detalle</th></tr>
+      </thead>
+      <tbody>
+        @for (r of visibles(); track r.revision + '-' + r.entidad + '-' + r.id) {
+          <tr class="border-t cursor-pointer hover:bg-blue-50" (click)="verHistorial(r.entidad, r.id)">
+            <td class="px-3 py-2 whitespace-nowrap">{{ r.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td class="px-3 py-2">{{ r.usuario }}</td>
+            <td class="px-3 py-2">{{ r.entidad }} #{{ r.id }}</td>
+            <td class="px-3 py-2"><span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs">{{ r.accion }}</span></td>
+            <td class="px-3 py-2 text-gray-600">{{ r.resumen }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Sin cambios registrados todavía.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bg-white rounded-lg shadow">
+    <div class="border-b px-4 py-3 font-medium text-gray-700">
+      @if (seleccion(); as s) { Historial de {{ s.entidad }} #{{ s.id }} } @else { Historial (elige una fila) }
+    </div>
+    @for (h of historial(); track h.revision) {
+      <div class="border-b px-4 py-3 text-sm">
+        <div class="mb-1 text-gray-500">{{ h.fecha | date: 'dd/MM/yyyy HH:mm:ss' }} · <b>{{ h.usuario }}</b> · {{ h.accion }}</div>
+        @if (h.cambios.length === 0) {
+          <div class="text-gray-400">Sin cambios en los campos visibles.</div>
+        } @else {
+          <table class="w-full text-xs">
+            <tbody>
+              @for (c of h.cambios; track c.campo) {
+                <tr><td class="py-0.5 pr-2 text-gray-600">{{ c.campo }}</td><td class="py-0.5 pr-2 text-red-700 line-through">{{ texto(c.antes) }}</td><td class="py-0.5 text-green-700">{{ texto(c.despues) }}</td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    } @empty {
+      @if (seleccion()) { <div class="px-4 py-6 text-sm text-gray-500">Sin historial para este registro.</div> }
+    }
+  </div>
+</div>

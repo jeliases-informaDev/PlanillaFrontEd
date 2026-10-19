@@ -4,7 +4,9 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { API_URL } from '../../core/config/api.config';
+import { AuthService } from '../../core/services/auth.service';
 import { RealtimeService } from '../../core/services/realtime.service';
+import { descargar } from '../../core/utils/descargar';
 
 export interface LineaBoleta {
   tipo: 'INGRESO' | 'DESCUENTO' | 'INFORMATIVO';
@@ -47,9 +49,55 @@ export class Planilla implements OnInit {
   protected mensaje = signal('');
   protected error = signal('');
   protected expandida = signal<number | null>(null); // boleta con el detalle abierto
+  protected estado = signal<{ estado: string; fechaCierre?: string; cerradaPor?: string; motivoReapertura?: string }>({ estado: 'SIN_PROCESAR' });
+  protected auth = inject(AuthService);
+
+  protected cerrada = computed(() => this.estado().estado === 'CERRADA');
 
   protected alternarDetalle(id: number): void {
     this.expandida.update((actual) => (actual === id ? null : id));
+  }
+
+  private cargarEstado(): void {
+    this.http.get<{ estado: string; fechaCierre?: string; cerradaPor?: string; motivoReapertura?: string }>(`${API_URL}/planillas/${this.periodo()}/estado`)
+      .subscribe({ next: (e) => this.estado.set(e), error: () => this.estado.set({ estado: 'SIN_PROCESAR' }) });
+  }
+
+  protected cerrar(): void {
+    if (!confirm(`¿Cerrar la planilla ${this.periodo()}? Ya no se podrá recalcular ni registrar movimientos sin reabrirla con autorización.`)) return;
+    this.error.set('');
+    this.http.post(`${API_URL}/planillas/${this.periodo()}/cerrar`, {}).subscribe({
+      next: () => {
+        this.mensaje.set(`Planilla ${this.periodo()} cerrada.`);
+        this.cargarEstado();
+      },
+      error: (e: HttpErrorResponse) => this.error.set(e.error?.mensaje ?? 'No se pudo cerrar la planilla.')
+    });
+  }
+
+  protected reabrir(): void {
+    const motivo = window.prompt('Motivo de la reapertura y quién la autoriza (contador y gerencia):', '');
+    if (motivo === null) return;
+    this.error.set('');
+    this.http.post(`${API_URL}/planillas/${this.periodo()}/reabrir`, { motivo }).subscribe({
+      next: () => {
+        this.mensaje.set(`Planilla ${this.periodo()} reabierta.`);
+        this.cargarEstado();
+      },
+      error: (e: HttpErrorResponse) => this.error.set(e.error?.mensaje ?? 'No se pudo reabrir la planilla.')
+    });
+  }
+
+  protected verPdf(b: Boleta): void {
+    this.error.set('');
+    descargar(this.http, `${API_URL}/reportes/boletas/${b.idBoleta}/pdf`, `boleta-${b.periodo}.pdf`, true)
+      .subscribe({ error: (e: Error) => this.error.set(e.message) });
+  }
+
+  protected descargarTodas(): void {
+    this.error.set('');
+    descargar(this.http, `${API_URL}/reportes/planillas/${this.periodo()}/boletas.pdf`, `boletas-${this.periodo()}.pdf`)
+      .subscribe({ error: (e: Error) => this.error.set(e.message) });
   }
 
   /** Avisos de lo que el periodo elegido incluye, para que la boleta no sorprenda. */
@@ -94,6 +142,7 @@ export class Planilla implements OnInit {
   protected cargar(): void {
     this.error.set('');
     if (!/^\d{4}-\d{2}$/.test(this.periodo())) return;
+    this.cargarEstado();
     this.http.get<Boleta[]>(`${API_URL}/planillas/${this.periodo()}/boletas`).subscribe({
       next: (lista) => this.boletas.set(lista),
       error: (e: HttpErrorResponse) => this.error.set(e.error?.mensaje ?? 'No se pudieron cargar las boletas.')
@@ -108,6 +157,7 @@ export class Planilla implements OnInit {
       next: (lista) => {
         this.mensaje.set(`Planilla ${this.periodo()} procesada: ${lista.length} boleta(s).`);
         this.procesando.set(false);
+        this.cargarEstado();
       },
       error: (e: HttpErrorResponse) => {
         this.error.set(e.error?.mensaje ?? 'No se pudo procesar la planilla.');

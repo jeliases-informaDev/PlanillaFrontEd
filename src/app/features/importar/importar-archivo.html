@@ -1,0 +1,106 @@
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <h1 class="text-2xl font-bold text-gray-800">{{ config.titulo }}</h1>
+  <a [routerLink]="config.volverA" class="text-sm text-blue-700 hover:underline">{{ config.volverTexto }}</a>
+</div>
+
+<p class="mb-4 max-w-3xl text-sm text-gray-600">{{ config.ayuda }}</p>
+
+<div class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap items-center gap-3">
+  @if (config.plantillaUrl) {
+    <button type="button" (click)="descargarPlantilla()"
+            class="rounded border border-blue-600 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50">Descargar plantilla (.xlsx)</button>
+  }
+  <input type="file" accept=".xlsx,.xls" (change)="seleccionar($event)" class="text-sm" />
+  <button type="button" (click)="revisar()" [disabled]="!archivo() || trabajando()"
+          class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+    {{ trabajando() ? 'Procesando…' : 'Revisar archivo' }}
+  </button>
+  <button type="button" (click)="importar()" [disabled]="!puedeImportar()"
+          class="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:bg-green-300">
+    Importar
+  </button>
+</div>
+
+@if (error()) {
+  <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+@if (resultado(); as r) {
+  @if (r.importado) {
+    <div class="mb-4 rounded bg-green-50 px-4 py-3 text-sm text-green-800">
+      Listo, se guardó. <a [routerLink]="config.volverA" class="font-medium underline">{{ config.volverTexto }}</a>
+    </div>
+  } @else if (r.errores.length === 0) {
+    <div class="mb-4 rounded bg-blue-50 px-4 py-3 text-sm text-blue-800">
+      Archivo correcto. Nada se guardó todavía: revisa las cifras y pulsa «Importar».
+    </div>
+  } @else {
+    <div class="mb-4 rounded bg-red-50 px-4 py-3 text-sm text-red-800">
+      {{ r.errores.length }} problema(s) en el archivo. Corrígelos y vuelve a subirlo: no se guardó nada.
+    </div>
+    <div class="mb-6 bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-gray-600"><tr><th class="px-4 py-3 w-24">Fila</th><th class="px-4 py-3">Problema</th></tr></thead>
+        <tbody>
+          @for (e of r.errores; track $index) {
+            <tr class="border-t"><td class="px-4 py-2 font-mono">{{ e.fila }}</td><td class="px-4 py-2 text-red-700">{{ e.mensaje }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @for (a of r.advertencias; track $index) {
+    <div class="mb-3 rounded bg-amber-50 px-4 py-2 text-sm text-amber-800">{{ a }}</div>
+  }
+
+  @if (cifras().length > 0) {
+    <div class="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+      @for (c of cifras(); track c.etiqueta) {
+        <div class="rounded-lg bg-white p-3 shadow"><div class="text-gray-500">{{ c.etiqueta }}</div><div class="text-xl font-bold text-gray-800">{{ c.valor }}</div></div>
+      }
+    </div>
+  }
+
+  @if (sinCoincidencia().length > 0) {
+    <div class="mb-6 rounded-lg bg-white p-4 shadow text-sm">
+      <div class="mb-1 font-medium text-gray-700">ID del reloj sin empleado registrado ({{ sinCoincidencia().length }})</div>
+      <div class="text-gray-600 break-words">{{ sinCoincidencia().join(', ') }}</div>
+    </div>
+  }
+
+  @if (detalleCambios().length > 0) {
+    <div class="mb-2 text-sm font-medium text-gray-700">{{ r.importado ? 'Cambios aplicados' : 'Cambios que se aplicarán' }}</div>
+    <div class="mb-6 bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-gray-600"><tr><th class="px-4 py-3">Empleado</th><th class="px-4 py-3">Cambios</th></tr></thead>
+        <tbody>
+          @for (c of detalleCambios(); track c.empleado) {
+            <tr class="border-t"><td class="px-4 py-2 font-medium text-gray-800">{{ c.empleado }}</td><td class="px-4 py-2">{{ c.cambios }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (detalle().length > 0) {
+    <div class="mb-2 text-sm font-medium text-gray-700">Tardanzas y faltas por trabajador</div>
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-gray-600">
+          <tr><th class="px-4 py-3">Trabajador</th><th class="px-4 py-3 text-right">Tardanzas</th><th class="px-4 py-3 text-right">Minutos de atraso</th><th class="px-4 py-3 text-right">Faltas</th></tr>
+        </thead>
+        <tbody>
+          @for (d of detalle(); track d.empleado) {
+            <tr class="border-t">
+              <td class="px-4 py-2 font-medium text-gray-800">{{ d.empleado }}</td>
+              <td class="px-4 py-2 text-right">{{ d.tardanzas }}</td>
+              <td class="px-4 py-2 text-right">{{ d.minutosTardanza }}</td>
+              <td class="px-4 py-2 text-right" [class.text-red-700]="d.faltas > 0">{{ d.faltas }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

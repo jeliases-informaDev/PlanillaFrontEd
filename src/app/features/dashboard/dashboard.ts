@@ -69,6 +69,9 @@ export class Dashboard implements OnInit {
       case 'empleados':
         return `${d.nombresCompletos} (DNI ${d.dni}) — ${d.regimenLaboral}`;
       case 'asistencias':
+        if (e.accion === 'IMPORTADO') {
+          return `Marcador importado (${d.desde} al ${d.hasta}): ${d.diasRegistrados} días, ${d.tardanzas} tardanzas, ${d.faltas} faltas`;
+        }
         return `${d.nombreEmpleado}: ${d.estado} el ${d.fecha}`;
       case 'movimientos':
         return `${d.empleado}: ${d.concepto} S/ ${Number(d.monto).toFixed(2)} (${d.periodo})`;

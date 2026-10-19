@@ -1,0 +1,57 @@
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Usuarios</h1>
+<p class="mb-4 text-sm text-gray-600">Dos roles: <b>Contador (ADMIN)</b> hace todo; <b>Gerencia</b> solo ve. Cada usuario nuevo recibe una contraseña temporal que debe cambiar al entrar.</p>
+
+<form (ngSubmit)="crear()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-3">
+  <input name="username" [(ngModel)]="form.username" required minlength="3" placeholder="Usuario (ej. contador)" autocomplete="off" class="border rounded px-3 py-2 text-sm" />
+  <input name="nombreCompleto" [(ngModel)]="form.nombreCompleto" placeholder="Nombre completo" class="border rounded px-3 py-2 text-sm" />
+  <input name="correo" type="email" [(ngModel)]="form.correo" placeholder="Correo" class="border rounded px-3 py-2 text-sm" />
+  <select name="rol" [(ngModel)]="form.rol" class="border rounded px-3 py-2 text-sm">
+    <option value="GERENCIA">Gerencia (solo lectura)</option>
+    <option value="ADMIN">Contador (todo)</option>
+  </select>
+  <input name="password" type="password" [(ngModel)]="form.password" required minlength="8" placeholder="Contraseña temporal" autocomplete="new-password" class="border rounded px-3 py-2 text-sm" />
+  <button type="submit" [disabled]="f.invalid || guardando()"
+          class="md:col-start-5 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+    {{ guardando() ? 'Creando…' : 'Crear usuario' }}
+  </button>
+</form>
+
+@if (mensaje()) { <div class="mb-4 rounded bg-green-50 px-4 py-2 text-sm text-green-700">{{ mensaje() }}</div> }
+@if (error()) { <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div> }
+
+<div class="bg-white rounded-lg shadow overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50 text-left text-gray-600">
+      <tr><th class="px-4 py-3">Usuario</th><th class="px-4 py-3">Nombre</th><th class="px-4 py-3">Correo</th><th class="px-4 py-3">Rol</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3"></th></tr>
+    </thead>
+    <tbody>
+      @for (u of usuarios(); track u.idUsuario) {
+        <tr class="border-t" [class.opacity-60]="!u.activo">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ u.username }} @if (u.username === yo) { <span class="text-xs text-gray-400">(tú)</span> }</td>
+          <td class="px-4 py-3">{{ u.nombreCompleto ?? '—' }}</td>
+          <td class="px-4 py-3">{{ u.correo ?? '—' }}</td>
+          <td class="px-4 py-3">
+            <select [ngModel]="u.rol" (ngModelChange)="cambiarRol(u, $event)" [disabled]="u.username === yo" class="border rounded px-2 py-1 text-sm">
+              <option value="ADMIN">Contador</option>
+              <option value="GERENCIA">Gerencia</option>
+            </select>
+          </td>
+          <td class="px-4 py-3">
+            <span class="rounded-full px-2 py-0.5 text-xs" [class.bg-green-100]="u.activo" [class.text-green-800]="u.activo" [class.bg-gray-200]="!u.activo">{{ u.activo ? 'Activo' : 'Desactivado' }}</span>
+            @if (u.debeCambiarPassword) { <span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">contraseña temporal</span> }
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <button type="button" (click)="reiniciarPassword(u)" class="text-xs text-blue-600 hover:underline">Reiniciar contraseña</button>
+            @if (u.username !== yo) {
+              <button type="button" (click)="alternarActivo(u)" class="ml-3 text-xs hover:underline" [class.text-red-600]="u.activo" [class.text-green-700]="!u.activo">
+                {{ u.activo ? 'Desactivar' : 'Activar' }}
+              </button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay usuarios.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>

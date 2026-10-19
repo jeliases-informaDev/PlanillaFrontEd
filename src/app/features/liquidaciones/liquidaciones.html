@@ -7,7 +7,7 @@
       <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }} · {{ e.dni }} ({{ e.estado }})</option>
     }
   </select>
-  <label class="text-xs text-gray-500">Fecha de cese
+  <label class="text-xs text-gray-500">Fecha de cese (último día trabajado)
     <input type="date" [ngModel]="fechaCese()" (ngModelChange)="cambiarFecha($event)"
            class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
   </label>
@@ -16,6 +16,7 @@
 @if (seleccionado(); as s) {
   <p class="mb-4 text-sm text-gray-600">
     Ingreso: {{ s.fechaIngreso }} · Sueldo base: S/ {{ s.sueldoBase | number: '1.2-2' }} · {{ s.regimenLaboral }}
+    @if (s.estado === 'CESADO') { · <span class="text-red-700">Cesado el {{ s.fechaCese }}</span> }
   </p>
 }
 
@@ -24,18 +25,44 @@
 }
 
 @if (resultado(); as r) {
-  <div class="bg-white rounded-lg shadow p-6 max-w-xl" [class.opacity-60]="calculando()">
-    <div class="text-sm text-gray-500">{{ r.nombresEmpleado }} · {{ r.regimen }}</div>
-    <div class="mb-4 text-sm text-gray-500">Tiempo de servicio: <span class="font-medium text-gray-800">{{ r.tiempoServicio }}</span></div>
-    <dl class="space-y-2 text-sm">
-      <div class="flex justify-between"><dt>Vacaciones truncas</dt><dd>S/ {{ r.montoVacacionesTruncas | number: '1.2-2' }}</dd></div>
-      <div class="flex justify-between"><dt>Gratificación trunca</dt><dd>S/ {{ r.montoGratificacionTrunca | number: '1.2-2' }}</dd></div>
-      <div class="flex justify-between"><dt>CTS trunca</dt><dd>S/ {{ r.montoCtsTrunca | number: '1.2-2' }}</dd></div>
-      <div class="flex justify-between border-t pt-3 text-base font-semibold text-gray-900">
-        <dt>Total a liquidar</dt><dd>S/ {{ r.totalLiquidacion | number: '1.2-2' }}</dd>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" [class.opacity-60]="calculando()">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm text-gray-500">{{ r.nombresEmpleado }} · {{ r.regimen }}</div>
+      <div class="mb-1 text-sm text-gray-500">Del {{ r.fechaIngreso }} al {{ r.fechaCese }}: <span class="font-medium text-gray-800">{{ r.tiempoServicio }}</span></div>
+      <div class="mb-4 text-sm text-gray-500">Remuneración computable: <span class="font-medium text-gray-800">S/ {{ r.remuneracionComputable | number: '1.2-2' }}</span>
+        @if (r.promedioVariables > 0) { <span class="text-xs">(incluye promedio de variables S/ {{ r.promedioVariables | number: '1.2-2' }})</span> }
       </div>
-    </dl>
-    <p class="mt-4 text-xs text-gray-400">Cálculo referencial: se recalcula al cambiar empleado o fecha de cese y no se guarda.</p>
+      <dl class="space-y-3 text-sm">
+        <div><div class="flex justify-between"><dt>Vacaciones truncas</dt><dd>S/ {{ r.montoVacacionesTruncas | number: '1.2-2' }}</dd></div><div class="text-xs text-gray-500">{{ r.detalleVacaciones }}</div></div>
+        <div><div class="flex justify-between"><dt>Gratificación trunca</dt><dd>S/ {{ r.montoGratificacionTrunca | number: '1.2-2' }}</dd></div><div class="text-xs text-gray-500">{{ r.detalleGratificacion }}</div></div>
+        <div class="flex justify-between"><dt>Bonificación extraordinaria 9%</dt><dd>S/ {{ r.montoBonificacionExtraordinaria | number: '1.2-2' }}</dd></div>
+        <div><div class="flex justify-between"><dt>CTS trunca (se deposita, no se paga en efectivo)</dt><dd>S/ {{ r.montoCtsTrunca | number: '1.2-2' }}</dd></div><div class="text-xs text-gray-500">{{ r.detalleCts }}</div></div>
+        <div class="flex justify-between border-t pt-3"><dt>Total beneficios</dt><dd>S/ {{ r.totalBeneficios | number: '1.2-2' }}</dd></div>
+        <div><div class="flex justify-between text-red-700"><dt>Descuento AFP/ONP (sobre vacaciones)</dt><dd>− S/ {{ r.descuentoPension | number: '1.2-2' }}</dd></div><div class="text-xs text-gray-500">{{ r.detallePension }}</div></div>
+        <div class="flex justify-between border-t pt-3 text-base font-semibold text-gray-900">
+          <dt>Neto a pagar al trabajador</dt><dd>S/ {{ r.totalNeto | number: '1.2-2' }}</dd>
+        </div>
+      </dl>
+    </div>
+    <div class="space-y-3">
+      @for (a of r.avisos; track $index) {
+        <div class="rounded bg-amber-50 px-4 py-2 text-sm text-amber-800">{{ a }}</div>
+      }
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="mb-2 text-sm font-medium text-gray-700">Detalle con códigos PLAME</div>
+        <table class="w-full text-sm">
+          <tbody>
+            @for (l of r.detalle; track $index) {
+              <tr [class.text-gray-500]="l.tipo === 'INFORMATIVO'">
+                <td class="py-1 pr-2 font-mono text-xs text-gray-400">{{ l.codigo ?? '' }}</td>
+                <td class="py-1 pr-2">{{ l.descripcion }}</td>
+                <td class="py-1 text-right" [class.text-red-700]="l.tipo === 'DESCUENTO'">{{ l.tipo === 'DESCUENTO' ? '−' : '' }} S/ {{ l.monto | number: '1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 } @else if (!error()) {
   <div class="rounded-lg border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500">

@@ -6,14 +6,34 @@ import { API_URL } from '../../core/config/api.config';
 import { EmpleadosStore } from '../../core/services/empleados.store';
 import { hoyISO } from '../../core/utils/lista';
 
+interface Linea {
+  tipo: 'INGRESO' | 'DESCUENTO' | 'INFORMATIVO';
+  codigo: string | null;
+  descripcion: string;
+  monto: number;
+}
+
 interface Liquidacion {
   nombresEmpleado: string;
   regimen: string;
+  fechaIngreso: string;
+  fechaCese: string;
   tiempoServicio: string;
+  remuneracionComputable: number;
+  promedioVariables: number;
   montoVacacionesTruncas: number;
+  detalleVacaciones: string;
   montoGratificacionTrunca: number;
+  detalleGratificacion: string;
+  montoBonificacionExtraordinaria: number;
   montoCtsTrunca: number;
-  totalLiquidacion: number;
+  detalleCts: string;
+  totalBeneficios: number;
+  descuentoPension: number;
+  detallePension: string;
+  totalNeto: number;
+  detalle: Linea[];
+  avisos: string[];
 }
 
 @Component({
@@ -44,6 +64,9 @@ export class Liquidaciones implements OnInit {
 
   protected cambiarEmpleado(id: number | null): void {
     this.idEmpleado.set(id);
+    // Si ya está cesado, se usa su fecha de cese registrada
+    const e = this.store.empleados().find((x) => x.idEmpleado === id);
+    if (e?.fechaCese) this.fechaCese.set(e.fechaCese);
     this.calcular();
   }
 

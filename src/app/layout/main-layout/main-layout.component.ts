@@ -21,7 +21,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     { ruta: '/movimientos', texto: 'Movimientos' },
     { ruta: '/conceptos', texto: 'Conceptos' },
     { ruta: '/planilla', texto: 'Planilla' },
+    { ruta: '/reportes', texto: 'Reportes' },
     { ruta: '/liquidaciones', texto: 'Liquidaciones' }
+  ];
+
+  protected readonly enlacesAdmin = [
+    { ruta: '/usuarios', texto: 'Usuarios' },
+    { ruta: '/auditoria', texto: 'Auditoría' }
   ];
 
   ngOnInit(): void {
@@ -33,7 +39,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   protected get rol(): string {
-    return this.auth.getRol() ?? '';
+    return this.auth.getRol() === 'ADMIN' ? 'Contador' : 'Gerencia (solo lectura)';
+  }
+
+  protected get nombre(): string {
+    return this.auth.getNombre();
+  }
+
+  protected get esAdmin(): boolean {
+    return this.auth.esAdmin();
   }
 
   protected salir(): void {

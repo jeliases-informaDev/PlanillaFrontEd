@@ -6,15 +6,34 @@
     <input type="month" [ngModel]="periodo()" (ngModelChange)="cambiarPeriodo($event)"
            class="mt-1 block border rounded px-3 py-2 text-sm" />
   </label>
-  <button type="button" (click)="procesar()" [disabled]="procesando()"
-          class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
-    {{ procesando() ? 'Procesando…' : 'Procesar planilla' }}
+  @if (auth.esAdmin()) {
+    <button type="button" (click)="procesar()" [disabled]="procesando() || cerrada()"
+            class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+      {{ procesando() ? 'Procesando…' : 'Procesar planilla' }}
+    </button>
+    @if (cerrada()) {
+      <button type="button" (click)="reabrir()" class="rounded border border-amber-600 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50">Reabrir (con autorización)</button>
+    } @else if (boletas().length > 0) {
+      <button type="button" (click)="cerrar()" class="rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900">Cerrar planilla</button>
+    }
+  }
+  <button type="button" (click)="descargarTodas()" [disabled]="boletas().length === 0"
+          class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+    Boletas en PDF
   </button>
   <button type="button" (click)="descargarPlame()"
           class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
     Descargar PLAME (.rem)
   </button>
+  <span class="rounded-full px-3 py-1 text-xs font-medium"
+        [class.bg-gray-200]="estado().estado === 'SIN_PROCESAR'" [class.bg-amber-100]="estado().estado === 'BORRADOR'" [class.text-amber-800]="estado().estado === 'BORRADOR'"
+        [class.bg-green-100]="cerrada()" [class.text-green-800]="cerrada()">
+    {{ estado().estado === 'SIN_PROCESAR' ? 'Sin procesar' : (cerrada() ? 'Cerrada el ' + estado().fechaCierre + ' por ' + estado().cerradaPor : 'Borrador') }}
+  </span>
 </div>
+@if (estado().motivoReapertura) {
+  <div class="mb-3 rounded bg-amber-50 px-4 py-2 text-sm text-amber-800">Reabierta: {{ estado().motivoReapertura }}</div>
+}
 
 @for (nota of notasDelPeriodo(); track nota) {
   <div class="mb-3 rounded bg-blue-50 px-4 py-2 text-sm text-blue-800">{{ nota }}</div>
@@ -51,6 +70,7 @@
           <td class="px-4 py-3 text-right">S/ {{ (b.renta5taRetenida ?? 0) | number: '1.2-2' }}</td>
           <td class="px-4 py-3 text-right font-semibold">S/ {{ b.totalNeto | number: '1.2-2' }}</td>
           <td class="px-4 py-3 text-right">
+            <button type="button" (click)="verPdf(b)" class="mr-3 text-xs text-blue-600 hover:underline">PDF</button>
             <button type="button" (click)="alternarDetalle(b.idBoleta)" class="text-xs text-blue-600 hover:underline">
               {{ expandida() === b.idBoleta ? 'Ocultar' : 'Ver detalle' }}
             </button>

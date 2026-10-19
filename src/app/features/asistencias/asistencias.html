@@ -1,41 +1,60 @@
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
   <h1 class="text-2xl font-bold text-gray-800">Asistencias</h1>
-  <label class="text-sm text-gray-700">
-    Periodo
-    <input type="month" [ngModel]="periodo()" (ngModelChange)="cambiarPeriodo($event)"
-           class="ml-2 border rounded px-3 py-2 text-sm" />
-  </label>
+  <div class="flex flex-wrap items-center gap-2">
+    <a routerLink="/horarios/importar" class="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">Cargar horarios (tareo)</a>
+    <a routerLink="/asistencias/importar" class="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">Importar del marcador (Excel)</a>
+    <label class="text-sm text-gray-700">
+      Periodo
+      <input type="month" [ngModel]="periodo()" (ngModelChange)="cambiarPeriodo($event)"
+             class="ml-2 border rounded px-3 py-2 text-sm" />
+    </label>
+  </div>
 </div>
 
-<form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
-  <select name="idEmpleado" [(ngModel)]="form.idEmpleado" required class="border rounded px-3 py-2 text-sm md:col-span-2">
-    <option [ngValue]="null" disabled>Empleado…</option>
-    @for (e of empleadosActivos(); track e.idEmpleado) {
-      <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }} · {{ e.dni }}</option>
-    }
-  </select>
-  <input name="fecha" type="date" [(ngModel)]="form.fecha" required class="border rounded px-3 py-2 text-sm" />
-  <select name="estado" [(ngModel)]="form.estado" required class="border rounded px-3 py-2 text-sm">
-    @for (s of estados; track s) {
-      <option [value]="s">{{ s.replace('_', ' ') }}</option>
-    }
-  </select>
-  <label class="text-xs text-gray-500">Hora de ingreso
-    <input name="horaIngreso" type="time" [(ngModel)]="form.horaIngreso" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
-  </label>
-  <label class="text-xs text-gray-500">Hora de salida
-    <input name="horaSalida" type="time" [(ngModel)]="form.horaSalida" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
-  </label>
-  <label class="text-xs text-gray-500">Minutos de tardanza
-    <input name="minutosTardanza" type="number" min="0" [(ngModel)]="form.minutosTardanza" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
-  </label>
-  <button type="submit" [disabled]="f.invalid || guardando()"
-          class="self-end rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
-    {{ guardando() ? 'Guardando…' : 'Registrar asistencia' }}
-  </button>
-</form>
+<div class="mb-4 grid grid-cols-3 gap-3 text-sm">
+  <div class="rounded-lg bg-white p-3 shadow"><div class="text-gray-500">Tardanzas sin justificar</div><div class="text-2xl font-bold text-amber-700">{{ resumen().tardanzas }}</div></div>
+  <div class="rounded-lg bg-white p-3 shadow"><div class="text-gray-500">Faltas sin justificar</div><div class="text-2xl font-bold text-red-700">{{ resumen().faltas }}</div></div>
+  <div class="rounded-lg bg-white p-3 shadow"><div class="text-gray-500">Justificadas</div><div class="text-2xl font-bold text-gray-700">{{ resumen().justificadas }}</div></div>
+</div>
 
-<p class="mb-3 text-xs text-gray-500">Si el empleado ya tiene registro en esa fecha, se corrige el existente (no se duplica).</p>
+<div class="mb-3 flex flex-wrap items-center gap-4 text-sm">
+  <label class="flex items-center gap-2 text-gray-700">
+    <input type="checkbox" [checked]="soloProblemas()" (change)="soloProblemas.set(!soloProblemas())" /> Ver solo tardanzas y faltas
+  </label>
+  <button type="button" (click)="mostrarManual.set(!mostrarManual())" class="text-blue-700 hover:underline">
+    {{ mostrarManual() ? 'Ocultar registro manual' : 'Registrar una asistencia a mano' }}
+  </button>
+</div>
+
+@if (mostrarManual()) {
+  <form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+    <select name="idEmpleado" [(ngModel)]="form.idEmpleado" required class="border rounded px-3 py-2 text-sm md:col-span-2">
+      <option [ngValue]="null" disabled>Empleado…</option>
+      @for (e of empleadosActivos(); track e.idEmpleado) {
+        <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }} · {{ e.dni }}</option>
+      }
+    </select>
+    <input name="fecha" type="date" [(ngModel)]="form.fecha" required class="border rounded px-3 py-2 text-sm" />
+    <select name="estado" [(ngModel)]="form.estado" required class="border rounded px-3 py-2 text-sm">
+      @for (s of estados; track s) {
+        <option [value]="s">{{ s.replace('_', ' ') }}</option>
+      }
+    </select>
+    <label class="text-xs text-gray-500">Hora de ingreso
+      <input name="horaIngreso" type="time" [(ngModel)]="form.horaIngreso" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+    </label>
+    <label class="text-xs text-gray-500">Hora de salida
+      <input name="horaSalida" type="time" [(ngModel)]="form.horaSalida" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+    </label>
+    <label class="text-xs text-gray-500">Minutos de tardanza
+      <input name="minutosTardanza" type="number" min="0" [(ngModel)]="form.minutosTardanza" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+    </label>
+    <button type="submit" [disabled]="f.invalid || guardando()"
+            class="self-end rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+      {{ guardando() ? 'Guardando…' : 'Registrar asistencia' }}
+    </button>
+  </form>
+}
 
 @if (error()) {
   <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
@@ -45,26 +64,47 @@
   <table class="min-w-full text-sm">
     <thead class="bg-gray-50 text-left text-gray-600">
       <tr>
-        <th class="px-4 py-3">Fecha</th>
-        <th class="px-4 py-3">Empleado</th>
-        <th class="px-4 py-3">Estado</th>
-        <th class="px-4 py-3">Ingreso</th>
-        <th class="px-4 py-3">Salida</th>
-        <th class="px-4 py-3 text-right">Tardanza (min)</th>
+        <th class="px-3 py-3">Fecha</th>
+        <th class="px-3 py-3">Empleado</th>
+        <th class="px-3 py-3">Estado</th>
+        <th class="px-3 py-3">Ingreso</th>
+        <th class="px-3 py-3">Almuerzo</th>
+        <th class="px-3 py-3">Salida</th>
+        <th class="px-3 py-3">Programado</th>
+        <th class="px-3 py-3 text-right">Tardanza (min)</th>
+        <th class="px-3 py-3 text-right">Extra (min)</th>
+        <th class="px-3 py-3"></th>
       </tr>
     </thead>
     <tbody>
-      @for (a of asistencias(); track a.idAsistencia) {
+      @for (a of visibles(); track a.idAsistencia) {
         <tr class="border-t transition-colors duration-1000" [class.bg-green-100]="recienLlegadas().has(a.idAsistencia)">
-          <td class="px-4 py-3">{{ a.fecha | date: 'dd/MM/yyyy' }}</td>
-          <td class="px-4 py-3 font-medium text-gray-800">{{ a.nombreEmpleado }}</td>
-          <td class="px-4 py-3"><span class="rounded-full px-2 py-0.5 text-xs" [class]="color(a.estado)">{{ a.estado.replace('_', ' ') }}</span></td>
-          <td class="px-4 py-3">{{ a.horaIngreso ?? '—' }}</td>
-          <td class="px-4 py-3">{{ a.horaSalida ?? '—' }}</td>
-          <td class="px-4 py-3 text-right">{{ a.minutosTardanza }}</td>
+          <td class="px-3 py-3">{{ a.fecha | date: 'dd/MM/yyyy' }}</td>
+          <td class="px-3 py-3 font-medium text-gray-800">
+            {{ a.nombreEmpleado }}
+            @if (a.observacion) { <div class="text-xs font-normal text-amber-700">{{ a.observacion }}</div> }
+            @if (a.justificada) { <div class="text-xs font-normal text-gray-500">Justificada: {{ a.motivoJustificacion }}</div> }
+          </td>
+          <td class="px-3 py-3">
+            <span class="rounded-full px-2 py-0.5 text-xs" [class]="color(a.estado)">{{ a.estado.replace('_', ' ') }}</span>
+            @if (a.justificada) { <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">justificada</span> }
+          </td>
+          <td class="px-3 py-3">{{ hm(a.marcaIngreso) }}</td>
+          <td class="px-3 py-3">{{ hm(a.marcaAlmuerzoInicio) }} – {{ hm(a.marcaAlmuerzoFin) }}</td>
+          <td class="px-3 py-3">{{ hm(a.marcaSalida) }}</td>
+          <td class="px-3 py-3 text-gray-500">{{ hm(a.horaProgramadaEntrada) }}–{{ hm(a.horaProgramadaSalida) }}</td>
+          <td class="px-3 py-3 text-right" [class.text-amber-700]="a.minutosTardanza > 0">{{ a.minutosTardanza }}</td>
+          <td class="px-3 py-3 text-right text-gray-500">{{ a.minutosExtra ?? 0 }}</td>
+          <td class="px-3 py-3 text-right">
+            @if (a.estado === 'TARDANZA' || a.estado === 'FALTA') {
+              <button type="button" (click)="justificar(a)" class="text-xs text-blue-600 hover:underline">
+                {{ a.justificada ? 'Quitar justificación' : 'Justificar' }}
+              </button>
+            }
+          </td>
         </tr>
       } @empty {
-        <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay asistencias registradas en este periodo.</td></tr>
+        <tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay asistencias en este periodo. Importa el Excel del marcador.</td></tr>
       }
     </tbody>
   </table>

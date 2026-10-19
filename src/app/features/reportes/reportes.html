@@ -1,0 +1,90 @@
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <h1 class="text-2xl font-bold text-gray-800">Reportes</h1>
+  <label class="text-sm text-gray-700">
+    Periodo
+    <input type="month" [ngModel]="periodo()" (ngModelChange)="cambiarPeriodo($event)" class="ml-2 border rounded px-3 py-2 text-sm" />
+  </label>
+</div>
+
+<div class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap items-center gap-3 text-sm">
+  <button type="button" (click)="bajar('resumen')" [disabled]="trabajando()" class="rounded border border-blue-600 px-3 py-2 text-blue-700 hover:bg-blue-50 disabled:opacity-50">Resumen de planilla (.xlsx)</button>
+  <button type="button" (click)="bajar('boletas')" [disabled]="trabajando()" class="rounded border border-blue-600 px-3 py-2 text-blue-700 hover:bg-blue-50 disabled:opacity-50">Todas las boletas (.pdf)</button>
+  <button type="button" (click)="bajar('afpnet')" [disabled]="trabajando()" class="rounded border border-blue-600 px-3 py-2 text-blue-700 hover:bg-blue-50 disabled:opacity-50">AFPnet (.xlsx)</button>
+  <span class="inline-flex items-center gap-1">
+    <input [(ngModel)]="banco" placeholder="Banco (opcional)" class="w-36 border rounded px-2 py-2" />
+    <button type="button" (click)="bajar('banco')" [disabled]="trabajando()" class="rounded border border-blue-600 px-3 py-2 text-blue-700 hover:bg-blue-50 disabled:opacity-50">Pago al banco (.txt)</button>
+  </span>
+  @if (auth.esAdmin()) {
+    <button type="button" (click)="enviarCorreos()" [disabled]="trabajando() || !correoHabilitado()"
+            [title]="correoHabilitado() ? '' : 'El servidor no tiene configurado el correo (MAIL_HOST, MAIL_USER, MAIL_PASSWORD, MAIL_HABILITADO=true)'"
+            class="rounded bg-green-600 px-3 py-2 font-medium text-white hover:bg-green-700 disabled:bg-green-300">
+      {{ trabajando() === 'correo' ? 'Enviando…' : 'Enviar boletas por correo' }}
+    </button>
+  }
+</div>
+<p class="mb-4 text-xs text-gray-500">El archivo de pago al banco usa un formato provisional (documento | nombre | banco | cuenta | moneda | monto). Se ajustará al layout exacto que entregue el banco.</p>
+
+@if (mensaje()) { <div class="mb-4 rounded bg-green-50 px-4 py-2 text-sm text-green-700">{{ mensaje() }}</div> }
+@if (error()) { <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div> }
+
+@if (tablero(); as t) {
+  @if (t.trabajadores === 0) {
+    <div class="rounded-lg border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500">No hay boletas procesadas en {{ t.periodo }}.</div>
+  } @else {
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-sm">
+      <div class="rounded-lg bg-white p-4 shadow"><div class="text-gray-500">Trabajadores</div><div class="text-2xl font-bold text-gray-800">{{ t.trabajadores }}</div></div>
+      <div class="rounded-lg bg-white p-4 shadow"><div class="text-gray-500">Total ingresos</div><div class="text-2xl font-bold text-gray-800">S/ {{ t.totalIngresos | number: '1.2-2' }}</div><div class="text-xs text-gray-400">100 %</div></div>
+      <div class="rounded-lg bg-white p-4 shadow"><div class="text-gray-500">Descuentos</div><div class="text-2xl font-bold text-red-700">S/ {{ t.totalDescuentos | number: '1.2-2' }}</div><div class="text-xs text-gray-400">{{ t.porcentajeDescuentos }} % de ingresos</div></div>
+      <div class="rounded-lg bg-white p-4 shadow"><div class="text-gray-500">Neto a pagar</div><div class="text-2xl font-bold text-green-700">S/ {{ t.totalNeto | number: '1.2-2' }}</div><div class="text-xs text-gray-400">{{ t.porcentajeNeto }} % · promedio S/ {{ t.promedioNeto | number: '1.2-2' }}</div></div>
+      <div class="rounded-lg bg-white p-4 shadow"><div class="text-gray-500">EsSalud (empleador)</div><div class="text-xl font-bold text-gray-800">S/ {{ t.essaludEmpleador | number: '1.2-2' }}</div></div>
+      <div class="rounded-lg bg-white p-4 shadow"><div class="text-gray-500">CTS a depositar</div><div class="text-xl font-bold text-gray-800">S/ {{ t.ctsADepositar | number: '1.2-2' }}</div></div>
+      <div class="rounded-lg bg-white p-4 shadow md:col-span-2"><div class="text-gray-500">Costo total para la empresa</div><div class="text-xl font-bold text-gray-800">S/ {{ t.costoEmpresa | number: '1.2-2' }}</div><div class="text-xs text-gray-400">carga del empleador {{ t.porcentajeCargaEmpleador }} % sobre ingresos</div></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="mb-3 font-medium text-gray-700">Ingresos por concepto</div>
+        @for (c of ingresosTop(); track c.concepto) {
+          <div class="mb-2 text-sm">
+            <div class="flex justify-between"><span>{{ c.concepto }}</span><span class="text-gray-600">S/ {{ c.monto | number: '1.2-2' }} · {{ c.porcentaje }} %</span></div>
+            <div class="h-2 rounded bg-gray-100"><div class="h-2 rounded bg-blue-500" [style.width.%]="c.porcentaje"></div></div>
+          </div>
+        }
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="mb-3 font-medium text-gray-700">Descuentos por concepto</div>
+        @for (c of descuentosTop(); track c.concepto) {
+          <div class="mb-2 text-sm">
+            <div class="flex justify-between"><span>{{ c.concepto }}</span><span class="text-gray-600">S/ {{ c.monto | number: '1.2-2' }} · {{ c.porcentaje }} %</span></div>
+            <div class="h-2 rounded bg-gray-100"><div class="h-2 rounded bg-red-400" [style.width.%]="c.porcentaje * 4 > 100 ? 100 : c.porcentaje * 4"></div></div>
+          </div>
+        } @empty { <div class="text-sm text-gray-500">Sin descuentos.</div> }
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <div class="border-b px-4 py-3 font-medium text-gray-700">Por régimen</div>
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-gray-600"><tr><th class="px-4 py-2">Régimen</th><th class="px-4 py-2 text-right">Trabajadores</th><th class="px-4 py-2 text-right">Ingresos</th><th class="px-4 py-2 text-right">%</th></tr></thead>
+          <tbody>
+            @for (r of t.regimenes; track r.regimen) {
+              <tr class="border-t"><td class="px-4 py-2">{{ r.regimen }}</td><td class="px-4 py-2 text-right">{{ r.trabajadores }}</td><td class="px-4 py-2 text-right">S/ {{ r.ingresos | number: '1.2-2' }}</td><td class="px-4 py-2 text-right">{{ r.porcentaje }} %</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <div class="border-b px-4 py-3 font-medium text-gray-700">Retenciones de ley</div>
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-gray-600"><tr><th class="px-4 py-2">Sistema</th><th class="px-4 py-2 text-right">Monto</th><th class="px-4 py-2 text-right">% de ingresos</th></tr></thead>
+          <tbody>
+            @for (p of t.pensiones; track p.sistema) {
+              <tr class="border-t"><td class="px-4 py-2">{{ p.sistema }}</td><td class="px-4 py-2 text-right">S/ {{ p.monto | number: '1.2-2' }}</td><td class="px-4 py-2 text-right">{{ p.porcentaje }} %</td></tr>
+            } @empty { <tr><td colspan="3" class="px-4 py-4 text-center text-gray-500">Sin retenciones.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}
