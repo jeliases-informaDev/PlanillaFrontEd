@@ -25,6 +25,22 @@
           class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
     Descargar PLAME (.rem)
   </button>
+  <button type="button" (click)="alternarQuincena()"
+          class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+    {{ mostrarQuincena() ? 'Ocultar quincena' : 'Adelanto de quincena' }}
+  </button>
+  @if (esMesGratificacion()) {
+    <button type="button" (click)="constanciaGratificacion()" [disabled]="boletas().length === 0"
+            class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+      Constancias de gratificación (PDF)
+    </button>
+  }
+  @if (esMesCts()) {
+    <button type="button" (click)="constanciaCts()" [disabled]="boletas().length === 0"
+            class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+      Constancias de CTS (PDF)
+    </button>
+  }
   <span class="rounded-full px-3 py-1 text-xs font-medium"
         [class.bg-gray-200]="estado().estado === 'SIN_PROCESAR'" [class.bg-amber-100]="estado().estado === 'BORRADOR'" [class.text-amber-800]="estado().estado === 'BORRADOR'"
         [class.bg-green-100]="cerrada()" [class.text-green-800]="cerrada()">
@@ -43,6 +59,73 @@
 }
 @if (error()) {
   <div class="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{{ error() }}</div>
+}
+
+@if (mostrarQuincena()) {
+  <div class="bg-white rounded-lg shadow p-4 mb-4">
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+      <div>
+        <h2 class="font-semibold text-gray-800">Adelanto de la 1ra quincena · {{ periodo() }}</h2>
+        <p class="text-xs text-gray-500">
+          Mitad del sueldo fijo (básico + asignación familiar) menos la mitad de la pensión y de la renta de 5ta del mes anterior.
+          Al registrarlo queda como descuento 0701 del mes y la boleta mensual paga la 2da quincena.
+        </p>
+      </div>
+      <div class="flex gap-2">
+        @if (auth.esAdmin()) {
+          <button type="button" (click)="registrarQuincena()" [disabled]="cerrada() || quincena().length === 0 || cargandoQuincena()"
+                  class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+            Registrar adelantos
+          </button>
+        }
+        <button type="button" (click)="descargarQuincena()" [disabled]="quincena().length === 0"
+                class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+          Excel para el banco
+        </button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-gray-600">
+          <tr>
+            <th class="px-4 py-2">Empleado</th>
+            <th class="px-4 py-2">Cuenta</th>
+            <th class="px-4 py-2 text-right">Básico</th>
+            <th class="px-4 py-2 text-right">Asig. fam.</th>
+            <th class="px-4 py-2 text-right">Pensión ½</th>
+            <th class="px-4 py-2 text-right">Renta 5ta ½</th>
+            <th class="px-4 py-2 text-right">Adelanto</th>
+            <th class="px-4 py-2">Registrado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (q of quincena(); track q.idEmpleado) {
+            <tr class="border-t">
+              <td class="px-4 py-2 font-medium text-gray-800">{{ q.empleado }}<div class="text-xs font-normal text-gray-500">{{ q.tipoDocumento }} {{ q.documento }}</div></td>
+              <td class="px-4 py-2 text-xs text-gray-600">{{ q.banco ?? '—' }} {{ q.cuenta ?? '' }}</td>
+              <td class="px-4 py-2 text-right">S/ {{ q.basico | number: '1.2-2' }}</td>
+              <td class="px-4 py-2 text-right">S/ {{ q.asignacionFamiliar | number: '1.2-2' }}</td>
+              <td class="px-4 py-2 text-right text-red-700">− S/ {{ q.pension | number: '1.2-2' }}</td>
+              <td class="px-4 py-2 text-right text-red-700">− S/ {{ q.renta5ta | number: '1.2-2' }}</td>
+              <td class="px-4 py-2 text-right font-semibold">S/ {{ q.adelanto | number: '1.2-2' }}</td>
+              <td class="px-4 py-2">{{ q.registrado ? 'Sí' : 'No' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="px-4 py-6 text-center text-gray-500">{{ cargandoQuincena() ? 'Calculando…' : 'No hay trabajadores para la quincena de este periodo.' }}</td></tr>
+          }
+        </tbody>
+        @if (quincena().length > 0) {
+          <tfoot class="bg-gray-50 font-semibold text-gray-800">
+            <tr class="border-t">
+              <td class="px-4 py-2" colspan="6">Total a adelantar</td>
+              <td class="px-4 py-2 text-right">S/ {{ totalQuincena() | number: '1.2-2' }}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        }
+      </table>
+    </div>
+  </div>
 }
 
 <div class="bg-white rounded-lg shadow overflow-x-auto">
@@ -71,6 +154,12 @@
           <td class="px-4 py-3 text-right font-semibold">S/ {{ b.totalNeto | number: '1.2-2' }}</td>
           <td class="px-4 py-3 text-right">
             <button type="button" (click)="verPdf(b)" class="mr-3 text-xs text-blue-600 hover:underline">PDF</button>
+            @if (esMesGratificacion() && tieneGratificacion(b)) {
+              <button type="button" (click)="constanciaGratificacion(b)" class="mr-3 text-xs text-blue-600 hover:underline">Constancia grati</button>
+            }
+            @if (esMesCts() && (b.depositoCts ?? 0) > 0) {
+              <button type="button" (click)="constanciaCts(b)" class="mr-3 text-xs text-blue-600 hover:underline">Constancia CTS</button>
+            }
             <button type="button" (click)="alternarDetalle(b.idBoleta)" class="text-xs text-blue-600 hover:underline">
               {{ expandida() === b.idBoleta ? 'Ocultar' : 'Ver detalle' }}
             </button>

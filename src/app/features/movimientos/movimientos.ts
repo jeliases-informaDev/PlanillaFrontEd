@@ -18,12 +18,13 @@ interface Movimiento {
   tipo: string;
   periodo: string;
   monto: number;
+  cantidad?: number | null; // horas extras, días de vacaciones o de feriado
 }
 
-type Modo = 'fijo' | 'horas' | 'vacaciones';
+type Modo = 'fijo' | 'horas' | 'vacaciones' | 'feriado';
 
 // Conceptos que tienen su propio formulario (el monto se calcula con la ley) o los genera la planilla
-const CONCEPTOS_RESERVADOS = ['0101', '0201', '0118'];
+const CONCEPTOS_RESERVADOS = ['0121', '0201', '0105', '0106', '0118', '0107'];
 
 @Component({
   selector: 'app-movimientos',
@@ -48,6 +49,8 @@ export class Movimientos implements OnInit {
   protected conceptosMonto = computed(() =>
     this.conceptosStore.conceptos().filter((c) => !CONCEPTOS_RESERVADOS.includes(c.codigo))
   );
+  protected conceptosIngreso = computed(() => this.conceptosMonto().filter((c) => c.tipo === 'INGRESO'));
+  protected conceptosDescuento = computed(() => this.conceptosMonto().filter((c) => c.tipo === 'DESCUENTO'));
 
   protected totalIngresos = computed(() =>
     this.movimientos().filter((m) => m.tipo === 'INGRESO').reduce((s, m) => s + Number(m.monto), 0)
@@ -59,6 +62,7 @@ export class Movimientos implements OnInit {
   protected fijo = { idEmpleado: null as number | null, codigoConcepto: null as string | null, monto: null as number | null };
   protected horas = { idEmpleado: null as number | null, horasAl25: 0, horasAl35: 0 };
   protected vacaciones = { idEmpleado: null as number | null, diasGozados: null as number | null };
+  protected feriado = { idEmpleado: null as number | null, dias: null as number | null };
 
   ngOnInit(): void {
     this.empleadosStore.iniciar();
@@ -123,6 +127,10 @@ export class Movimientos implements OnInit {
         url = `${API_URL}/movimientos/horas-extras`;
         cuerpo = { ...this.horas, periodo };
         break;
+      case 'feriado':
+        url = `${API_URL}/movimientos/feriado`;
+        cuerpo = { ...this.feriado, periodo };
+        break;
       default:
         url = `${API_URL}/movimientos/vacaciones`;
         cuerpo = { ...this.vacaciones, periodo };
@@ -135,6 +143,7 @@ export class Movimientos implements OnInit {
         this.fijo = { ...this.fijo, monto: null };
         this.horas = { ...this.horas, horasAl25: 0, horasAl35: 0 };
         this.vacaciones = { ...this.vacaciones, diasGozados: null };
+        this.feriado = { ...this.feriado, dias: null };
         this.guardando.set(false);
       },
       error: (e: HttpErrorResponse) => {

@@ -33,6 +33,22 @@ export interface Boleta {
   detalle: LineaBoleta[];
 }
 
+/** Fila del adelanto de la 1ra quincena (la calcula el backend). */
+export interface Quincena {
+  idEmpleado: number;
+  empleado: string;
+  tipoDocumento: string;
+  documento: string;
+  banco: string | null;
+  cuenta: string | null;
+  basico: number;
+  asignacionFamiliar: number;
+  pension: number;
+  renta5ta: number;
+  adelanto: number;
+  registrado: boolean;
+}
+
 @Component({
   selector: 'app-planilla',
   imports: [FormsModule, DecimalPipe],
@@ -53,6 +69,75 @@ export class Planilla implements OnInit {
   protected auth = inject(AuthService);
 
   protected cerrada = computed(() => this.estado().estado === 'CERRADA');
+
+  // --- Quincena y constancias (planilla de la contadora)
+  protected quincena = signal<Quincena[]>([]);
+  protected mostrarQuincena = signal(false);
+  protected cargandoQuincena = signal(false);
+  protected mes = computed(() => Number(this.periodo().slice(5, 7)));
+  protected esMesGratificacion = computed(() => this.mes() === 7 || this.mes() === 12);
+  protected esMesCts = computed(() => this.mes() === 5 || this.mes() === 11);
+  protected totalQuincena = computed(() => this.quincena().reduce((s, q) => s + Number(q.adelanto), 0));
+
+  protected alternarQuincena(): void {
+    this.mostrarQuincena.update((v) => !v);
+    if (this.mostrarQuincena()) this.cargarQuincena();
+  }
+
+  private cargarQuincena(): void {
+    this.cargandoQuincena.set(true);
+    this.http.get<Quincena[]>(`${API_URL}/planillas/${this.periodo()}/quincena`).subscribe({
+      next: (l) => {
+        this.quincena.set(l);
+        this.cargandoQuincena.set(false);
+      },
+      error: (e: HttpErrorResponse) => {
+        this.error.set(e.error?.mensaje ?? 'No se pudo calcular la quincena.');
+        this.cargandoQuincena.set(false);
+      }
+    });
+  }
+
+  protected registrarQuincena(): void {
+    if (!confirm(`¿Registrar el adelanto de quincena de ${this.periodo()} como descuento (0701) de cada trabajador? Si ya existía, se actualiza el monto.`)) return;
+    this.error.set('');
+    this.cargandoQuincena.set(true);
+    this.http.post<Quincena[]>(`${API_URL}/planillas/${this.periodo()}/quincena/registrar`, {}).subscribe({
+      next: (l) => {
+        this.quincena.set(l);
+        this.cargandoQuincena.set(false);
+        this.mensaje.set(`Adelantos de quincena registrados: ${l.filter((q) => q.registrado).length}. Vuelve a procesar la planilla para que la boleta los descuente.`);
+      },
+      error: (e: HttpErrorResponse) => {
+        this.error.set(e.error?.mensaje ?? 'No se pudo registrar la quincena.');
+        this.cargandoQuincena.set(false);
+      }
+    });
+  }
+
+  protected descargarQuincena(): void {
+    this.error.set('');
+    descargar(this.http, `${API_URL}/reportes/planillas/${this.periodo()}/quincena.xlsx`, `quincena-${this.periodo()}.xlsx`)
+      .subscribe({ error: (e: Error) => this.error.set(e.message) });
+  }
+
+  protected tieneGratificacion(b: Boleta): boolean {
+    return b.detalle?.some((l) => l.codigo === '0406') ?? false;
+  }
+
+  /** Liquidación de gratificaciones (julio/diciembre): de un trabajador (se abre) o de todos (se descarga). */
+  protected constanciaGratificacion(b?: Boleta): void {
+    this.error.set('');
+    const url = `${API_URL}/reportes/planillas/${this.periodo()}/constancias/gratificacion.pdf` + (b ? `?idEmpleado=${b.idEmpleado}` : '');
+    descargar(this.http, url, `liquidacion-gratificacion-${this.periodo()}.pdf`, !!b).subscribe({ error: (e: Error) => this.error.set(e.message) });
+  }
+
+  /** Liquidación del depósito de CTS (mayo/noviembre). */
+  protected constanciaCts(b?: Boleta): void {
+    this.error.set('');
+    const url = `${API_URL}/reportes/planillas/${this.periodo()}/constancias/cts.pdf` + (b ? `?idEmpleado=${b.idEmpleado}` : '');
+    descargar(this.http, url, `liquidacion-cts-${this.periodo()}.pdf`, !!b).subscribe({ error: (e: Error) => this.error.set(e.message) });
+  }
 
   protected alternarDetalle(id: number): void {
     this.expandida.update((actual) => (actual === id ? null : id));
@@ -104,8 +189,8 @@ export class Planilla implements OnInit {
   protected notasDelPeriodo = computed(() => {
     const mes = Number(this.periodo().slice(5, 7));
     const notas: string[] = [];
-    if (mes === 7 || mes === 12) notas.push(`Incluye la gratificación de ${mes === 7 ? 'Fiestas Patrias' : 'Navidad'} y su bonificación extraordinaria.`);
-    if (mes === 5 || mes === 11) notas.push('Calcula la CTS a depositar (no se paga en la boleta: va a la cuenta CTS del trabajador).');
+    if (mes === 7 || mes === 12) notas.push(`Incluye la gratificación de ${mes === 7 ? 'Fiestas Patrias' : 'Navidad'} y su bonificación extraordinaria (con el promedio de horas extras y comisiones del semestre). Después de procesar puedes imprimir las constancias.`);
+    if (mes === 5 || mes === 11) notas.push('Calcula la CTS a depositar (no se paga en la boleta: va a la cuenta CTS del trabajador). Después de procesar puedes imprimir las constancias de depósito.');
     return notas;
   });
 
@@ -143,6 +228,7 @@ export class Planilla implements OnInit {
     this.error.set('');
     if (!/^\d{4}-\d{2}$/.test(this.periodo())) return;
     this.cargarEstado();
+    if (this.mostrarQuincena()) this.cargarQuincena();
     this.http.get<Boleta[]>(`${API_URL}/planillas/${this.periodo()}/boletas`).subscribe({
       next: (lista) => this.boletas.set(lista),
       error: (e: HttpErrorResponse) => this.error.set(e.error?.mensaje ?? 'No se pudieron cargar las boletas.')
