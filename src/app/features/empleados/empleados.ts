@@ -70,6 +70,8 @@ export class Empleados implements OnInit {
   protected guardando = signal(false);
   protected mostrarExtras = signal(false);
   protected form = { ...FORMULARIO_VACIO };
+  /** Persona que se está editando en el formulario de arriba (null = registrando una nueva). */
+  protected editando = signal<Empleado | null>(null);
 
   ngOnInit(): void {
     this.http.get<Regimen[]>(`${API_URL}/regimenes`).subscribe((r) => this.regimenes.set(r));
@@ -126,6 +128,49 @@ export class Empleados implements OnInit {
     });
   }
 
+  /** Carga a la persona en el formulario de arriba; al guardar se actualiza solo ese registro. */
+  protected editar(e: Empleado): void {
+    this.error.set('');
+    this.editando.set(e);
+    this.mostrarExtras.set(true);
+    this.form = {
+      ...FORMULARIO_VACIO,
+      tipoDocumento: e.tipoDocumento,
+      nombres: e.nombres ?? '',
+      apellidos: e.apellidos ?? '',
+      dni: e.dni,
+      idMarcador: e.idMarcador ?? '',
+      fechaNacimiento: e.fechaNacimiento ?? '',
+      fechaIngreso: e.fechaIngreso,
+      cargo: e.cargo ?? '',
+      area: e.area ?? '',
+      correo: e.correo ?? '',
+      telefono: e.telefono ?? '',
+      sueldoBase: e.sueldoBase,
+      horasJornada: e.horasJornada ?? 8,
+      banco: e.banco ?? '',
+      cuentaBancaria: e.cuentaBancaria ?? '',
+      bancoCts: e.bancoCts ?? '',
+      cuentaCts: e.cuentaCts ?? '',
+      supervisor: e.supervisor ?? '',
+      sede: e.sede ?? '',
+      cartera: e.cartera ?? '',
+      fechaFinContrato: e.fechaFinContrato ?? '',
+      idRegimen: this.regimenes().find((r) => r.nombre === e.regimenLaboral)?.idRegimen ?? null,
+      sistemaPensionario: e.sistemaPensionario ?? 'ONP',
+      idAfp: this.afps().find((a) => a.nombre === e.afp)?.idAfp ?? null,
+      cuspp: e.cuspp ?? '',
+      tipoComisionAfp: e.tipoComisionAfp ?? 'FLUJO',
+      asignacionFamiliar: !!e.asignacionFamiliar
+    };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  protected cancelarEdicion(): void {
+    this.editando.set(null);
+    this.form = { ...FORMULARIO_VACIO };
+  }
+
   protected editarSueldo(e: Empleado): void {
     const v = window.prompt(`Nuevo sueldo base de ${e.nombresCompletos} (actual S/ ${e.sueldoBase}):`, String(e.sueldoBase));
     if (v === null) return;
@@ -161,14 +206,20 @@ export class Empleados implements OnInit {
       fechaNacimiento: this.form.fechaNacimiento || null,
       fechaFinContrato: this.form.fechaFinContrato || null
     };
-    this.http.post<Empleado>(`${API_URL}/empleados`, cuerpo).subscribe({
+    // Nuevo: POST. En edición: PUT al mismo registro (el backend conserva lo que no cambie)
+    const enEdicion = this.editando();
+    const peticion = enEdicion
+      ? this.http.put<Empleado>(`${API_URL}/empleados/${enEdicion.idEmpleado}`, cuerpo)
+      : this.http.post<Empleado>(`${API_URL}/empleados`, cuerpo);
+    peticion.subscribe({
       next: () => {
-        // La fila aparece por el evento en tiempo real (igual que en las demás pantallas abiertas)
+        // La fila aparece o cambia por el evento en tiempo real (igual que en las demás pantallas abiertas)
         this.form = { ...FORMULARIO_VACIO };
+        this.editando.set(null);
         this.guardando.set(false);
       },
       error: (e: HttpErrorResponse) => {
-        this.error.set(e.error?.mensaje ?? 'No se pudo registrar el empleado.');
+        this.error.set(e.error?.mensaje ?? (enEdicion ? 'No se pudieron guardar los cambios.' : 'No se pudo registrar el empleado.'));
         this.guardando.set(false);
       }
     });

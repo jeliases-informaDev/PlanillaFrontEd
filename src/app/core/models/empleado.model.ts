@@ -2,6 +2,8 @@ export interface Empleado {
   idEmpleado: number;
   tipoDocumento: string;
   nombresCompletos: string;
+  nombres: string;
+  apellidos: string;
   dni: string; // número del documento de identidad
   idMarcador: string | null; // ID en el reloj biométrico (null = el documento)
   fechaNacimiento: string | null;
