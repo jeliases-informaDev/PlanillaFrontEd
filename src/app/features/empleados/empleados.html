@@ -147,6 +147,7 @@
             @if (auth.esAdmin()) {
               <button type="button" (click)="editar(e)" class="text-xs text-blue-600 hover:underline">Editar</button>
               <button type="button" (click)="editarSueldo(e)" class="ml-3 text-xs text-blue-600 hover:underline">Sueldo</button>
+              <button type="button" (click)="eliminar(e)" class="ml-3 text-xs text-gray-500 hover:text-red-700 hover:underline" title="Solo si nunca tuvo boletas">Borrar</button>
               @if (e.estado === 'ACTIVO') {
                 <button type="button" (click)="cesar(e)" class="ml-3 text-xs text-red-600 hover:underline">Cesar</button>
               } @else {
