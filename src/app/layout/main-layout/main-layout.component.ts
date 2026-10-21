@@ -20,6 +20,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     { ruta: '/asistencias', texto: 'Asistencias' },
     { ruta: '/movimientos', texto: 'Movimientos' },
     { ruta: '/conceptos', texto: 'Conceptos' },
+    { ruta: '/afps', texto: 'Tasas AFP' },
     { ruta: '/planilla', texto: 'Planilla' },
     { ruta: '/reportes', texto: 'Reportes' },
     { ruta: '/liquidaciones', texto: 'Liquidaciones' }

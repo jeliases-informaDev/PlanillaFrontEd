@@ -61,6 +61,7 @@ export const routes: Routes = [
       { path: 'planilla', loadComponent: () => import('./features/planilla/planilla').then(m => m.Planilla) },
       { path: 'reportes', loadComponent: () => import('./features/reportes/reportes').then(m => m.Reportes) },
       { path: 'liquidaciones', loadComponent: () => import('./features/liquidaciones/liquidaciones').then(m => m.Liquidaciones) },
+      { path: 'afps', loadComponent: () => import('./features/afps/afps').then(m => m.Afps) },
       { path: 'usuarios', canActivate: [adminGuard], loadComponent: () => import('./features/usuarios/usuarios').then(m => m.Usuarios) },
       { path: 'auditoria', canActivate: [adminGuard], loadComponent: () => import('./features/auditoria/auditoria').then(m => m.Auditoria) }
     ]

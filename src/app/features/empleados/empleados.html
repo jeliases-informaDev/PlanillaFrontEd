@@ -15,6 +15,12 @@
 
 @if (auth.esAdmin()) {
 <form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+  @if (editando(); as ed) {
+    <div class="md:col-span-4 flex flex-wrap items-center justify-between gap-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      <span>Editando a <strong>{{ ed.nombresCompletos }}</strong>: cambia lo que haga falta y pulsa «Guardar cambios».</span>
+      <button type="button" (click)="cancelarEdicion()" class="font-medium text-amber-900 underline">Cancelar</button>
+    </div>
+  }
   <select name="tipoDocumento" [(ngModel)]="form.tipoDocumento" required class="border rounded px-3 py-2 text-sm">
     @for (t of tiposDocumento(); track t.codigo) {
       <option [value]="t.codigo">{{ t.etiqueta }}</option>
@@ -90,7 +96,7 @@
 
   <button type="submit" [disabled]="f.invalid || guardando()"
           class="md:col-start-4 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
-    {{ guardando() ? 'Guardando…' : 'Registrar empleado' }}
+    {{ guardando() ? 'Guardando…' : (editando() ? 'Guardar cambios' : 'Registrar empleado') }}
   </button>
 </form>
 }
@@ -139,7 +145,8 @@
           </td>
           <td class="px-4 py-3 text-right whitespace-nowrap">
             @if (auth.esAdmin()) {
-              <button type="button" (click)="editarSueldo(e)" class="text-xs text-blue-600 hover:underline">Sueldo</button>
+              <button type="button" (click)="editar(e)" class="text-xs text-blue-600 hover:underline">Editar</button>
+              <button type="button" (click)="editarSueldo(e)" class="ml-3 text-xs text-blue-600 hover:underline">Sueldo</button>
               @if (e.estado === 'ACTIVO') {
                 <button type="button" (click)="cesar(e)" class="ml-3 text-xs text-red-600 hover:underline">Cesar</button>
               } @else {
