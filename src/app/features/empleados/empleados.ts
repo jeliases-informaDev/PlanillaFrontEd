@@ -8,7 +8,7 @@ import { API_URL } from '../../core/config/api.config';
 import { Empleado, TipoDocumento } from '../../core/models/empleado.model';
 import { AuthService } from '../../core/services/auth.service';
 import { RealtimeService } from '../../core/services/realtime.service';
-import { hoyISO, upsert } from '../../core/utils/lista';
+import { hoyISO, quitar, upsert } from '../../core/utils/lista';
 
 interface Regimen {
   idRegimen: number;
@@ -83,6 +83,10 @@ export class Empleados implements OnInit {
     this.cargar();
 
     this.realtime.watch<Empleado>('empleados').pipe(takeUntilDestroyed(this.destroyRef)).subscribe((evento) => {
+      if (evento.accion === 'ELIMINADO') {
+        this.empleados.update((lista) => quitar(lista, evento.data.idEmpleado, (e) => e.idEmpleado));
+        return;
+      }
       this.empleados.update((lista) => upsert(lista, evento.data, (e) => e.idEmpleado));
       this.resaltar(evento.data.idEmpleado);
     });
@@ -169,6 +173,18 @@ export class Empleados implements OnInit {
   protected cancelarEdicion(): void {
     this.editando.set(null);
     this.form = { ...FORMULARIO_VACIO };
+  }
+
+  /** Limpieza: borra a un trabajador ingresado por error (el backend lo rechaza si ya tiene boletas). */
+  protected eliminar(e: Empleado): void {
+    if (!confirm(`¿Borrar a ${e.nombresCompletos}? Se borran también sus asistencias, movimientos y horarios. Si ya tiene boletas procesadas no se podrá (usa «Cesar»).`)) return;
+    this.error.set('');
+    this.http.delete<void>(`${API_URL}/empleados/${e.idEmpleado}`).subscribe({
+      next: () => {
+        if (this.editando()?.idEmpleado === e.idEmpleado) this.cancelarEdicion();
+      },
+      error: (err: HttpErrorResponse) => this.error.set(err.error?.mensaje ?? 'No se pudo borrar al empleado.')
+    });
   }
 
   protected editarSueldo(e: Empleado): void {
