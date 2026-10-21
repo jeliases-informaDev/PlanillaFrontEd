@@ -65,12 +65,18 @@
 
   <div class="md:col-span-4">
     <button type="button" (click)="mostrarExtras.set(!mostrarExtras())" class="text-sm text-blue-700 hover:underline">
-      {{ mostrarExtras() ? 'Ocultar datos adicionales' : 'Datos adicionales (área, contacto, bancos, CTS)' }}
+      {{ mostrarExtras() ? 'Ocultar datos adicionales' : 'Datos adicionales (sede, supervisor, contrato, contacto, bancos, CTS)' }}
     </button>
   </div>
   @if (mostrarExtras()) {
     <input name="idMarcador" [(ngModel)]="form.idMarcador" placeholder="ID en el reloj (si no es su DNI)" class="border rounded px-3 py-2 text-sm" />
-    <input name="area" [(ngModel)]="form.area" placeholder="Área / sede / campaña" class="border rounded px-3 py-2 text-sm" />
+    <input name="area" [(ngModel)]="form.area" placeholder="Centro de costos / área" class="border rounded px-3 py-2 text-sm" />
+    <input name="sede" [(ngModel)]="form.sede" placeholder="Sede" class="border rounded px-3 py-2 text-sm" />
+    <input name="supervisor" [(ngModel)]="form.supervisor" placeholder="Supervisor" class="border rounded px-3 py-2 text-sm" />
+    <input name="cartera" [(ngModel)]="form.cartera" placeholder="Cartera / campaña" class="border rounded px-3 py-2 text-sm" />
+    <label class="text-xs text-gray-500">Fin de contrato (vacío = indefinido)
+      <input name="fechaFinContrato" type="date" [(ngModel)]="form.fechaFinContrato" class="mt-1 block w-full border rounded px-3 py-2 text-sm text-gray-800" />
+    </label>
     <input name="correo" type="email" [(ngModel)]="form.correo" placeholder="Correo" class="border rounded px-3 py-2 text-sm" />
     <input name="telefono" [(ngModel)]="form.telefono" placeholder="Teléfono" class="border rounded px-3 py-2 text-sm" />
     <label class="text-xs text-gray-500">Fecha de nacimiento
@@ -114,8 +120,12 @@
         <tr class="border-t transition-colors duration-1000" [class.bg-green-100]="recienLlegados().has(e.idEmpleado)">
           <td class="px-4 py-3 font-medium text-gray-800">{{ e.nombresCompletos }}</td>
           <td class="px-4 py-3">{{ e.tipoDocumento }} {{ e.dni }}</td>
-          <td class="px-4 py-3">{{ e.cargo ?? '—' }}</td>
-          <td class="px-4 py-3">{{ e.fechaIngreso | date: 'dd/MM/yyyy' }}</td>
+          <td class="px-4 py-3">{{ e.cargo ?? '—' }}
+            @if (e.sede || e.supervisor) { <div class="text-xs text-gray-500">{{ e.sede ?? '' }}{{ e.sede && e.supervisor ? ' · ' : '' }}{{ e.supervisor ?? '' }}</div> }
+          </td>
+          <td class="px-4 py-3">{{ e.fechaIngreso | date: 'dd/MM/yyyy' }}
+            @if (e.fechaFinContrato) { <div class="text-xs text-gray-500">hasta {{ e.fechaFinContrato | date: 'dd/MM/yyyy' }}</div> }
+          </td>
           <td class="px-4 py-3">{{ e.regimenLaboral }}</td>
           <td class="px-4 py-3 text-right">S/ {{ e.sueldoBase | number: '1.2-2' }}
             @if (e.horasJornada && e.horasJornada < 8) { <div class="text-xs font-normal text-gray-500">{{ e.horasJornada }} h/día: se paga proporcional</div> }
