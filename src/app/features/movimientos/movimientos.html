@@ -9,11 +9,13 @@
 
 <div class="mb-3 inline-flex rounded-lg bg-gray-200 p-1 text-sm">
   <button type="button" (click)="cambiarModo('fijo')"
-          class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'fijo'" [class.shadow]="modo() === 'fijo'">Bono / Descuento</button>
+          class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'fijo'" [class.shadow]="modo() === 'fijo'">Bono, comisión o descuento</button>
   <button type="button" (click)="cambiarModo('horas')"
           class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'horas'" [class.shadow]="modo() === 'horas'">Horas extras</button>
   <button type="button" (click)="cambiarModo('vacaciones')"
           class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'vacaciones'" [class.shadow]="modo() === 'vacaciones'">Vacaciones</button>
+  <button type="button" (click)="cambiarModo('feriado')"
+          class="rounded-md px-4 py-1.5" [class.bg-white]="modo() === 'feriado'" [class.shadow]="modo() === 'feriado'">Feriado laborado</button>
 </div>
 
 <form (ngSubmit)="registrar()" #f="ngForm" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -27,9 +29,16 @@
       </select>
       <select name="fCon" [(ngModel)]="fijo.codigoConcepto" required class="border rounded px-3 py-2 text-sm">
         <option [ngValue]="null" disabled>Concepto…</option>
-        @for (c of conceptosMonto(); track c.idConcepto) {
-          <option [ngValue]="c.codigo">{{ c.codigo }} · {{ c.descripcion }} ({{ c.tipo === 'DESCUENTO' ? '−' : '+' }})</option>
-        }
+        <optgroup label="Ingresos (+)">
+          @for (c of conceptosIngreso(); track c.idConcepto) {
+            <option [ngValue]="c.codigo">{{ c.codigo }} · {{ c.descripcion }}{{ c.afectaEssalud ? '' : ' · no remunerativo' }}</option>
+          }
+        </optgroup>
+        <optgroup label="Descuentos (−)">
+          @for (c of conceptosDescuento(); track c.idConcepto) {
+            <option [ngValue]="c.codigo">{{ c.codigo }} · {{ c.descripcion }}</option>
+          }
+        </optgroup>
       </select>
       <input name="fMonto" type="number" min="0.01" step="0.01" [(ngModel)]="fijo.monto" required placeholder="Monto (S/)" class="border rounded px-3 py-2 text-sm" />
     }
@@ -56,6 +65,15 @@
       </select>
       <input name="vDias" type="number" min="1" [(ngModel)]="vacaciones.diasGozados" required placeholder="Días gozados" class="border rounded px-3 py-2 text-sm" />
     }
+    @case ('feriado') {
+      <select name="feEmp" [(ngModel)]="feriado.idEmpleado" required class="border rounded px-3 py-2 text-sm md:col-span-2">
+        <option [ngValue]="null" disabled>Empleado…</option>
+        @for (e of empleadosActivos(); track e.idEmpleado) {
+          <option [ngValue]="e.idEmpleado">{{ e.nombresCompletos }}</option>
+        }
+      </select>
+      <input name="feDias" type="number" min="1" max="31" [(ngModel)]="feriado.dias" required placeholder="Días en feriado o descanso" class="border rounded px-3 py-2 text-sm" />
+    }
   }
   <button type="submit" [disabled]="f.invalid || guardando()"
           class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
@@ -64,8 +82,9 @@
 </form>
 
 <p class="mb-3 text-xs text-gray-500">
-  El monto de horas extras y vacaciones lo calcula el sistema con el sueldo del empleado. Para que un movimiento entre a la boleta,
-  vuelve a procesar la planilla del periodo.
+  El monto de horas extras, vacaciones y feriado laborado lo calcula el sistema con el sueldo del empleado (feriado: básico + asignación
+  familiar / 30 por día). Los ingresos marcados «no remunerativo» (movilidad, capacitación, bono por condición de trabajo) se pagan pero no
+  entran a AFP/ONP, EsSalud ni renta de 5ta. Para que un movimiento entre a la boleta, vuelve a procesar la planilla del periodo.
 </p>
 
 @if (error()) {
@@ -86,7 +105,9 @@
       @for (m of movimientos(); track m.idMovimiento) {
         <tr class="border-t transition-colors duration-1000" [class.bg-green-100]="recienLlegados().has(m.idMovimiento)">
           <td class="px-4 py-3 font-medium text-gray-800">{{ m.empleado }}</td>
-          <td class="px-4 py-3">{{ m.codigoConcepto }} · {{ m.concepto }}</td>
+          <td class="px-4 py-3">{{ m.codigoConcepto }} · {{ m.concepto }}
+            @if (m.cantidad) { <span class="text-xs text-gray-500">× {{ m.cantidad }}</span> }
+          </td>
           <td class="px-4 py-3 text-right font-medium" [class.text-green-700]="m.tipo === 'INGRESO'" [class.text-red-700]="m.tipo === 'DESCUENTO'">
             {{ m.tipo === 'DESCUENTO' ? '−' : '+' }} S/ {{ m.monto | number: '1.2-2' }}
           </td>

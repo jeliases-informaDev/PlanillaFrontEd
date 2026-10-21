@@ -82,7 +82,7 @@
               <td class="px-4 py-2">{{ e.cargo ?? '—' }}</td>
               <td class="px-4 py-2">{{ e.regimenLaboral }}</td>
               <td class="px-4 py-2 text-right">S/ {{ e.sueldoBase | number: '1.2-2' }}</td>
-              <td class="px-4 py-2">{{ e.sistemaPensionario === 'AFP' ? 'AFP ' + e.afp : 'ONP' }}</td>
+              <td class="px-4 py-2">{{ e.sistemaPensionario === 'AFP' ? 'AFP ' + e.afp : (e.sistemaPensionario === 'NINGUNO' ? 'Sin aporte' : 'ONP') }}</td>
             </tr>
           }
         </tbody>

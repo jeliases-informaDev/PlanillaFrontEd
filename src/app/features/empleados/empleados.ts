@@ -33,6 +33,7 @@ const FORMULARIO_VACIO = {
   correo: '',
   telefono: '',
   sueldoBase: null as number | null,
+  horasJornada: 8 as number,
   banco: '',
   cuentaBancaria: '',
   bancoCts: '',

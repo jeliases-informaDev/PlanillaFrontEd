@@ -11,13 +11,14 @@ export interface Empleado {
   correo: string | null;
   telefono: string | null;
   sueldoBase: number;
+  horasJornada: number; // 8 = jornada completa; con menos horas el básico se paga proporcional
   banco: string | null;
   cuentaBancaria: string | null;
   bancoCts: string | null;
   cuentaCts: string | null;
   regimenLaboral: string;
   estado: string;
-  sistemaPensionario: 'ONP' | 'AFP' | string;
+  sistemaPensionario: 'ONP' | 'AFP' | 'NINGUNO' | string; // NINGUNO = jubilado / no aportante
   afp: string | null;
   cuspp: string | null;
   tipoComisionAfp: 'FLUJO' | 'MIXTA' | string | null;
