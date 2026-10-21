@@ -16,6 +16,10 @@ export interface Empleado {
   cuentaBancaria: string | null;
   bancoCts: string | null;
   cuentaCts: string | null;
+  supervisor: string | null;
+  sede: string | null;
+  cartera: string | null;
+  fechaFinContrato: string | null; // null = indefinido
   regimenLaboral: string;
   estado: string;
   sistemaPensionario: 'ONP' | 'AFP' | 'NINGUNO' | string; // NINGUNO = jubilado / no aportante

@@ -38,6 +38,10 @@ const FORMULARIO_VACIO = {
   cuentaBancaria: '',
   bancoCts: '',
   cuentaCts: '',
+  supervisor: '',
+  sede: '',
+  cartera: '',
+  fechaFinContrato: '',
   idRegimen: null as number | null,
   sistemaPensionario: 'ONP' as string,
   idAfp: null as number | null,
@@ -154,7 +158,8 @@ export class Empleados implements OnInit {
       ...this.form,
       idAfp: esAfp ? this.form.idAfp : null,
       cuspp: esAfp ? this.form.cuspp : '',
-      fechaNacimiento: this.form.fechaNacimiento || null
+      fechaNacimiento: this.form.fechaNacimiento || null,
+      fechaFinContrato: this.form.fechaFinContrato || null
     };
     this.http.post<Empleado>(`${API_URL}/empleados`, cuerpo).subscribe({
       next: () => {
